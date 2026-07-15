@@ -1,0 +1,6 @@
+{
+  "name": "KGI DIESELS",
+  "description": "Distribution Redefined — Commercial freight matching and logistics platform connecting transporters and shippers.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

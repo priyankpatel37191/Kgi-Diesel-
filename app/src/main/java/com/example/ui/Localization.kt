@@ -1,0 +1,68 @@
+package com.example.ui
+
+object Localization {
+    private val strings = mapOf(
+        "app_title" to Pair("KGI DIESELS", "केजीआई डीजल्स"),
+        "tagline" to Pair("Distribution Redefined", "डिस्ट्रीब्यूशन रीडिफाइंड"),
+        "hindi_tagline" to Pair("AB TRANSPORT NAHI RUKEGA", "अब ट्रांसपोर्ट नहीं रुकेगा"),
+        "driver_login" to Pair("Driver / Transporter Login", "ड्राइवर / ट्रांसपोर्टर लॉगिन"),
+        "shipper_login" to Pair("Send Freight / Load / Parcel Login", "लोड सेंडर / शिपर लॉगिन"),
+        "phone_label" to Pair("Phone Number", "फ़ोन नंबर"),
+        "name_label" to Pair("Full Name", "पूरा नाम"),
+        "truck_size_label" to Pair("Truck Size (Feet)", "ट्रक का आकार (फीट)"),
+        "truck_num_label" to Pair("Truck/Vehicle Number", "गाड़ी का नंबर"),
+        "rc_label" to Pair("Upload RC (Registration)", "RC (पंजीकरण) अपलोड करें"),
+        "dl_label" to Pair("Upload Driving License (DL)", "ड्राइविंग लाइसेंस (DL) अपलोड करें"),
+        "aadhaar_label" to Pair("Upload Aadhaar Card", "आधार कार्ड अपलोड करें"),
+        "permit_label" to Pair("Upload Carrier Permit", "परमिट अपलोड करें"),
+        "submit_register" to Pair("Register & Onboard", "पंजीकरण करें"),
+        "login_title" to Pair("Secure Login", "सुरक्षित लॉगिन"),
+        "signup_title" to Pair("Create Account", "नया खाता बनाएँ"),
+        "login_btn" to Pair("Login", "लॉगिन करें"),
+        "signup_btn" to Pair("Sign Up", "पंजीकरण करें"),
+        "nav_loads" to Pair("Loads", "लोड्स"),
+        "nav_jobs" to Pair("Nearby Jobs", "आसपास के काम"),
+        "nav_trips" to Pair("Trips", "यात्रायें"),
+        "nav_logout" to Pair("Logout", "लॉगआउट"),
+        "gps_active" to Pair("GPS Tracking Toggle", "जीपीएस ट्रैकिंग"),
+        "nearby_services_title" to Pair("Nearby Services Locator", "आसपास की सेवाएँ"),
+        "fare_calc_title" to Pair("Fare Calculator Widget", "किराया कैलकुलेटर"),
+        "dist_label" to Pair("Distance (km)", "दूरी (km)"),
+        "weight_label" to Pair("Load Weight (Tons)", "लोड वजन (टन)"),
+        "rate_km_label" to Pair("Rate per km (₹)", "दर प्रति किमी (₹)"),
+        "rate_ton_label" to Pair("Rate per ton (₹)", "दर प्रति टन (₹)"),
+        "dist_cost" to Pair("Distance Cost", "दूरी लागत"),
+        "weight_cost" to Pair("Weight Cost", "वजन लागत"),
+        "total_fare" to Pair("Total Estimated Fare", "कुल किराया"),
+        "reset_btn" to Pair("Reset", "रीसेट करें"),
+        "calc_btn" to Pair("Calculate Fare", "किराया निकालें"),
+        "post_load_btn" to Pair("Post Load", "लोड पोस्ट करें"),
+        "load_type_label" to Pair("Load Type (e.g., Steel, Cement)", "सामान का प्रकार (उदा. स्टील, सीमेंट)"),
+        "pickup_label" to Pair("Pickup Location", "पिकअप का स्थान"),
+        "drop_label" to Pair("Drop Location", "ड्रॉप का स्थान"),
+        "interested_drivers" to Pair("Interested Drivers", "इच्छुक ड्राइवर्स"),
+        "status_posted" to Pair("Posted / Open", "पोस्ट किया गया / खुला है"),
+        "status_accepted" to Pair("Accepted", "स्वीकार कर लिया"),
+        "status_ongoing" to Pair("In Transit (Ongoing)", "रास्ते में है"),
+        "status_completed" to Pair("Completed", "पूरा हुआ"),
+        "no_drivers_interested" to Pair("Waiting for drivers to express interest...", "ड्राइवर्स की रुचि की प्रतीक्षा की जा रही है..."),
+        "chat_title" to Pair("In-App Direct Chat", "इन-ऐप डायरेक्ट चैट"),
+        "send_msg_hint" to Pair("Type a message...", "संदेश लिखें..."),
+        "commission_warning" to Pair("Commission Payment Pending", "कमीशन भुगतान लंबित है"),
+        "commission_desc" to Pair("As per KGI terms, the first trip is free. From the second trip onward, a minimal commission of 0.8% is required to unlock driver details and start tracking.", "KGI शर्तों के अनुसार, पहली यात्रा मुफ्त है। दूसरी यात्रा से, ड्राइवर विवरण अनलॉक करने और ट्रैकिंग शुरू करने के लिए 0.8% का न्यूनतम कमीशन आवश्यक है।"),
+        "pay_now" to Pair("Pay Commission (₹", "कमीशन भुगतान करें (₹"),
+        "sos_emergency" to Pair("EMERGENCY SOS", "आपातकालीन SOS"),
+        "sos_triggered" to Pair("SOS Alert Sent! Police & Emergency services notified.", "SOS अलर्ट भेजा गया! पुलिस और आपातकालीन सेवाओं को सूचित किया गया।"),
+        "view_docs" to Pair("View Driver Documents", "ड्राइवर के दस्तावेज़ देखें"),
+        "verified_text" to Pair("Documents Verified", "दस्तावेज़ सत्यापित"),
+        "gps_tracking_title" to Pair("Live Route Tracking", "लाइव रूट ट्रैकिंग"),
+        "gps_distance_remaining" to Pair("Distance Covered: ", "तय की गई दूरी: "),
+        "ratings_title" to Pair("Rate this Trip", "इस यात्रा को रेट करें"),
+        "submit_rating" to Pair("Submit Feedback", "प्रतिक्रिया सबमिट करें")
+    )
+
+    fun get(key: String, lang: String): String {
+        val pair = strings[key] ?: return key
+        return if (lang == "hi") pair.second else pair.first
+    }
+}
