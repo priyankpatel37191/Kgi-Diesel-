@@ -55,6 +55,20 @@ import kotlinx.coroutines.launch
 import kotlin.math.cos
 import kotlin.math.sin
 
+@Composable
+fun getHighContrastTextFieldColors() = OutlinedTextFieldDefaults.colors(
+    focusedTextColor = Color.Black,
+    unfocusedTextColor = Color.Black,
+    focusedContainerColor = Color.White,
+    unfocusedContainerColor = Color.White,
+    focusedLabelColor = Color.Black,
+    unfocusedLabelColor = Color(0xFF44474E),
+    focusedPlaceholderColor = Color.Gray,
+    unfocusedPlaceholderColor = Color.Gray,
+    focusedBorderColor = Color(0xFF005AC1),
+    unfocusedBorderColor = Color(0xFF74777F)
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun KgiApp(viewModel: MainViewModel) {
@@ -136,7 +150,7 @@ fun KgiApp(viewModel: MainViewModel) {
                 .padding(innerPadding)
         ) {
             when (currentScreen) {
-                "landing" -> LandingScreen(viewModel = viewModel, onNavigate = { viewModel.currentScreen = it })
+                "landing" -> PremiumLandingScreen(viewModel = viewModel, onNavigate = { viewModel.currentScreen = it })
                 "login_driver" -> LoginScreen(viewModel = viewModel, role = "DRIVER")
                 "signup_driver" -> SignupDriverScreen(viewModel = viewModel)
                 "login_shipper" -> LoginScreen(viewModel = viewModel, role = "SHIPPER")
@@ -192,97 +206,402 @@ fun KgiApp(viewModel: MainViewModel) {
 // 1. Landing Screen
 // -------------------------------------------------------------
 @Composable
-fun LandingScreen(viewModel: MainViewModel, onNavigate: (String) -> Unit) {
+fun PremiumLandingScreen(viewModel: MainViewModel, onNavigate: (String) -> Unit) {
     val lang = viewModel.language
-
-    // Interactive Fare Calculator local states for Landing Screen
-    var truckSize by remember { mutableStateOf("19 Feet") }
-    var distanceText by remember { mutableStateOf("450") }
-    var weightText by remember { mutableStateOf("9.5") }
-    var rateKmText by remember { mutableStateOf("28") }
-    var rateTonText by remember { mutableStateOf("100") }
-    var dropdownExpanded by remember { mutableStateOf(false) }
-
-    val truckSizes = listOf("14 Feet", "17 Feet", "19 Feet", "22 Feet", "24 Feet", "32 Feet")
-    val defaultRates = mapOf(
-        "14 Feet" to 22.0,
-        "17 Feet" to 25.0,
-        "19 Feet" to 28.0,
-        "22 Feet" to 32.0,
-        "24 Feet" to 36.0,
-        "32 Feet" to 42.0
-    )
-
-    val distance = distanceText.toDoubleOrNull() ?: 0.0
-    val weight = weightText.toDoubleOrNull() ?: 0.0
-    val rateKm = rateKmText.toDoubleOrNull() ?: 0.0
-    val rateTon = rateTonText.toDoubleOrNull() ?: 0.0
-
-    val distanceCost = distance * rateKm
-    val weightCost = weight * rateTon
-    val totalFare = distanceCost + weightCost
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .background(com.example.ui.theme.ColorFDFBFF)
-            .padding(bottom = 24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Top
     ) {
         Spacer(modifier = Modifier.height(16.dp))
 
         // Hero Section - Bold Typography Title & Tagline
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 8.dp),
-            horizontalAlignment = Alignment.Start
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
                 text = "KGI DIESELS",
-                fontSize = 11.sp,
+                fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
-                letterSpacing = 1.5.sp,
+                letterSpacing = 2.sp,
                 color = com.example.ui.theme.Color005AC1,
                 modifier = Modifier.testTag("hero_brand_badge")
             )
-            Spacer(modifier = Modifier.height(2.dp))
+            Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = Localization.get("hindi_tagline", lang),
-                fontSize = 12.sp,
+                fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,
                 fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
                 color = com.example.ui.theme.Color74777F
             )
             
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
             // Main Display Headline
             Text(
                 text = "DISTRIBUTION",
-                fontSize = 40.sp,
+                fontSize = 38.sp,
                 fontWeight = FontWeight.Black,
                 letterSpacing = (-1.5).sp,
                 color = com.example.ui.theme.Color1B1B1F,
-                lineHeight = 42.sp,
+                lineHeight = 40.sp,
                 modifier = Modifier.testTag("hero_title")
             )
             Text(
                 text = "REDEFINED.",
-                fontSize = 40.sp,
+                fontSize = 38.sp,
                 fontWeight = FontWeight.Black,
                 letterSpacing = (-1.5).sp,
                 color = com.example.ui.theme.Color005AC1,
-                lineHeight = 42.sp
+                lineHeight = 40.sp
             )
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = "Connecting India's commercial freight network.",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
-                color = com.example.ui.theme.Color44474E
+                color = com.example.ui.theme.Color44474E,
+                textAlign = TextAlign.Center
             )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // -------------------------------------------------------------
+        // Gorgeous Flashing 0% Commission Promo Banner
+        // -------------------------------------------------------------
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("promo_commission_banner"),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF7ED)), // Warm soft amber background
+            border = BorderStroke(2.dp, Color(0xFFF97316)) // Orange border
+        ) {
+            Row(
+                modifier = Modifier.padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(Color(0xFFF97316), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Campaign,
+                        contentDescription = "Offer",
+                        tint = Color.White,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column {
+                    Text(
+                        text = "0% COMMISSION AD",
+                        fontWeight = FontWeight.Black,
+                        fontSize = 11.sp,
+                        color = Color(0xFFC2410C),
+                        letterSpacing = 1.sp
+                    )
+                    Text(
+                        text = "0% Commission On Job providing And Driving hiring.",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        color = Color(0xFF1E293B)
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Beautiful Interactive Highway / Truck Art Illustration
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(140.dp)
+                .background(Color(0xFF1E293B), RoundedCornerShape(24.dp))
+                .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(24.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            // Draw schematic dynamic highway
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val pathColor = Color.White.copy(alpha = 0.15f)
+                val dashColor = Color(0xFFFBBF24)
+                
+                // Highway curves
+                drawLine(pathColor, Offset(0f, size.height * 0.7f), Offset(size.width, size.height * 0.7f), strokeWidth = 4f)
+                drawLine(pathColor, Offset(0f, size.height * 0.9f), Offset(size.width, size.height * 0.9f), strokeWidth = 4f)
+                
+                // Dash lines
+                val dashWidth = 20f
+                val gapWidth = 20f
+                var x = 0f
+                while (x < size.width) {
+                    drawLine(dashColor, Offset(x, size.height * 0.8f), Offset(x + dashWidth, size.height * 0.8f), strokeWidth = 3f)
+                    x += dashWidth + gapWidth
+                }
+            }
+            
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.LocalShipping,
+                    contentDescription = null,
+                    tint = Color(0xFF38BDF8),
+                    modifier = Modifier.size(48.dp)
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "No commission before 3rd trip!",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp
+                )
+                Text(
+                    text = "Fast matching • Verified Shippers & Drivers",
+                    color = Color.White.copy(alpha = 0.6f),
+                    fontSize = 11.sp
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // -------------------------------------------------------------
+        // Entrance / Role Selection Buttons
+        // -------------------------------------------------------------
+        Text(
+            text = "CHOOSE YOUR PANEL TO ENTER",
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Black,
+            color = com.example.ui.theme.Color74777F,
+            letterSpacing = 1.sp,
+            modifier = Modifier.padding(bottom = 12.dp)
+        )
+
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // DRIVER PANEL
+            Button(
+                onClick = { onNavigate("login_driver") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(58.dp)
+                    .testTag("driver_entry_btn"),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = com.example.ui.theme.Color005AC1)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.LocalShipping,
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp),
+                        tint = Color.White
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column(horizontalAlignment = Alignment.Start) {
+                        Text(
+                            text = "DRIVER / TRANSPORTER PANEL",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        Text(
+                            text = "Get loads, accept cargo, view assistance",
+                            fontSize = 10.sp,
+                            color = Color.White.copy(alpha = 0.8f)
+                        )
+                    }
+                }
+            }
+
+            // SHIPPER PANEL
+            Button(
+                onClick = { onNavigate("login_shipper") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(58.dp)
+                    .testTag("shipper_entry_btn"),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = com.example.ui.theme.Color1B1B1F)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Inventory,
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp),
+                        tint = Color.White
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column(horizontalAlignment = Alignment.Start) {
+                        Text(
+                            text = "SHIPPER / SENDER PANEL",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        Text(
+                            text = "Post load/parcel, find trucks, calculate fares",
+                            fontSize = 10.sp,
+                            color = Color.White.copy(alpha = 0.8f)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun LandingScreen(viewModel: MainViewModel, onNavigate: (String) -> Unit) {}
+
+@Composable
+fun OldLandingScreenDisabled(viewModel: MainViewModel, onNavigate: (String) -> Unit) {
+    val lang = viewModel.language
+    var dropdownExpanded by remember { mutableStateOf(false) }
+    var truckSize by remember { mutableStateOf("LCV (3 Ton)") }
+    var rateKmText by remember { mutableStateOf("12") }
+    var distanceText by remember { mutableStateOf("100") }
+    var weightText by remember { mutableStateOf("3") }
+    val defaultRates = mapOf("LCV (3 Ton)" to 12)
+    val truckSizes = listOf("LCV (3 Ton)")
+    val distanceCost = 0.0
+    val weightCost = 0.0
+    val totalFare = 0.0
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .background(com.example.ui.theme.ColorFDFBFF)
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Top
+    ) {
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Hero Section - Bold Typography Title & Tagline
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "KGI DIESELS",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 2.sp,
+                color = com.example.ui.theme.Color005AC1,
+                modifier = Modifier.testTag("hero_brand_badge")
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = Localization.get("hindi_tagline", lang),
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                color = com.example.ui.theme.Color74777F
+            )
+            
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Main Display Headline
+            Text(
+                text = "DISTRIBUTION",
+                fontSize = 38.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = (-1.5).sp,
+                color = com.example.ui.theme.Color1B1B1F,
+                lineHeight = 40.sp,
+                modifier = Modifier.testTag("hero_title")
+            )
+            Text(
+                text = "REDEFINED.",
+                fontSize = 38.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = (-1.5).sp,
+                color = com.example.ui.theme.Color005AC1,
+                lineHeight = 40.sp
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Connecting India's commercial freight network.",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                color = com.example.ui.theme.Color44474E,
+                textAlign = TextAlign.Center
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // -------------------------------------------------------------
+        // Gorgeous Flashing 0% Commission Promo Banner
+        // -------------------------------------------------------------
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("promo_commission_banner"),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF7ED)), // Warm soft amber background
+            border = BorderStroke(2.dp, Color(0xFFF97316)) // Orange border
+        ) {
+            Row(
+                modifier = Modifier.padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(Color(0xFFF97316), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Campaign,
+                        contentDescription = "Offer",
+                        tint = Color.White,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column {
+                    Text(
+                        text = "0% COMMISSION AD",
+                        fontWeight = FontWeight.Black,
+                        fontSize = 11.sp,
+                        color = Color(0xFFC2410C),
+                        letterSpacing = 1.sp
+                    )
+                    Text(
+                        text = "0% Commission On Job providing And Driving hiring.",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        color = Color(0xFF1E293B)
+                    )
+                }
+            }
         }
 
         Spacer(modifier = Modifier.height(20.dp))
@@ -681,12 +1000,7 @@ fun LoginScreen(viewModel: MainViewModel, role: String) {
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                 singleLine = true,
                 shape = RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = com.example.ui.theme.Color005AC1,
-                    unfocusedBorderColor = com.example.ui.theme.Color74777F,
-                    focusedContainerColor = Color.White,
-                    unfocusedContainerColor = Color.White
-                ),
+                colors = getHighContrastTextFieldColors(),
                 trailingIcon = {
                     if (phone.length == 10) {
                         Icon(
@@ -874,6 +1188,7 @@ fun SignupDriverScreen(viewModel: MainViewModel) {
             onValueChange = { name = it },
             label = { Text(Localization.get("name_label", lang)) },
             singleLine = true,
+            colors = getHighContrastTextFieldColors(),
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -885,6 +1200,7 @@ fun SignupDriverScreen(viewModel: MainViewModel) {
             label = { Text(Localization.get("phone_label", lang)) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
             singleLine = true,
+            colors = getHighContrastTextFieldColors(),
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -895,6 +1211,7 @@ fun SignupDriverScreen(viewModel: MainViewModel) {
             onValueChange = { truckNumber = it.uppercase() },
             label = { Text(Localization.get("truck_num_label", lang)) },
             singleLine = true,
+            colors = getHighContrastTextFieldColors(),
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -912,6 +1229,7 @@ fun SignupDriverScreen(viewModel: MainViewModel) {
                         Icon(imageVector = Icons.Default.ArrowDropDown, contentDescription = null)
                     }
                 },
+                colors = getHighContrastTextFieldColors(),
                 modifier = Modifier.fillMaxWidth()
             )
             DropdownMenu(
@@ -1075,6 +1393,7 @@ fun SignupShipperScreen(viewModel: MainViewModel) {
             onValueChange = { name = it },
             label = { Text(Localization.get("name_label", lang)) },
             singleLine = true,
+            colors = getHighContrastTextFieldColors(),
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -1086,6 +1405,7 @@ fun SignupShipperScreen(viewModel: MainViewModel) {
             label = { Text(Localization.get("phone_label", lang)) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
             singleLine = true,
+            colors = getHighContrastTextFieldColors(),
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -1127,9 +1447,10 @@ fun DriverHomeScreen(
         TabRow(
             selectedTabIndex = when (selectedTab) {
                 "loads" -> 0
-                "trips" -> 1
-                "assistance" -> 2
-                "profile" -> 3
+                "jobs" -> 1
+                "trips" -> 2
+                "assistance" -> 3
+                "profile" -> 4
                 else -> 0
             },
             modifier = Modifier.testTag("driver_top_navigation")
@@ -1137,26 +1458,32 @@ fun DriverHomeScreen(
             Tab(
                 selected = selectedTab == "loads",
                 onClick = { selectedTab = "loads" },
-                text = { Text("Get Loads", fontWeight = FontWeight.Bold, fontSize = 11.sp) },
-                icon = { Icon(Icons.Default.LocalShipping, contentDescription = null, modifier = Modifier.size(20.dp)) }
+                text = { Text("Get Loads", fontWeight = FontWeight.Bold, fontSize = 10.sp) },
+                icon = { Icon(Icons.Default.LocalShipping, contentDescription = null, modifier = Modifier.size(18.dp)) }
+            )
+            Tab(
+                selected = selectedTab == "jobs",
+                onClick = { selectedTab = "jobs" },
+                text = { Text("Find Jobs", fontWeight = FontWeight.Bold, fontSize = 10.sp) },
+                icon = { Icon(Icons.Default.AddBusiness, contentDescription = null, modifier = Modifier.size(18.dp)) }
             )
             Tab(
                 selected = selectedTab == "trips",
                 onClick = { selectedTab = "trips" },
-                text = { Text("Ongoing Trip", fontWeight = FontWeight.Bold, fontSize = 11.sp) },
-                icon = { Icon(Icons.Default.Map, contentDescription = null, modifier = Modifier.size(20.dp)) }
+                text = { Text("Ongoing Trip", fontWeight = FontWeight.Bold, fontSize = 10.sp) },
+                icon = { Icon(Icons.Default.Map, contentDescription = null, modifier = Modifier.size(18.dp)) }
             )
             Tab(
                 selected = selectedTab == "assistance",
                 onClick = { selectedTab = "assistance" },
-                text = { Text("Assistance", fontWeight = FontWeight.Bold, fontSize = 11.sp) },
-                icon = { Icon(Icons.Default.BuildCircle, contentDescription = null, modifier = Modifier.size(20.dp)) }
+                text = { Text("Assistance", fontWeight = FontWeight.Bold, fontSize = 10.sp) },
+                icon = { Icon(Icons.Default.BuildCircle, contentDescription = null, modifier = Modifier.size(18.dp)) }
             )
             Tab(
                 selected = selectedTab == "profile",
                 onClick = { selectedTab = "profile" },
-                text = { Text("Profile & Help", fontWeight = FontWeight.Bold, fontSize = 11.sp) },
-                icon = { Icon(Icons.Default.AccountCircle, contentDescription = null, modifier = Modifier.size(20.dp)) }
+                text = { Text("Profile & Help", fontWeight = FontWeight.Bold, fontSize = 10.sp) },
+                icon = { Icon(Icons.Default.AccountCircle, contentDescription = null, modifier = Modifier.size(18.dp)) }
             )
         }
 
@@ -1167,6 +1494,7 @@ fun DriverHomeScreen(
         ) {
             when (selectedTab) {
                 "loads" -> DriverLoadsTab(viewModel = viewModel, allLoads = allLoads, lang = lang)
+                "jobs" -> DriverJobsTab(viewModel = viewModel, lang = lang)
                 "trips" -> DriverTripsTab(viewModel = viewModel, allLoads = allLoads, lang = lang)
                 "assistance" -> DriverServicesTab(viewModel = viewModel, lang = lang)
                 "profile" -> DriverProfileTab(viewModel = viewModel, lang = lang)
@@ -1551,7 +1879,7 @@ fun DriverServicesTab(viewModel: MainViewModel, lang: String) {
     var areaQuery by remember { mutableStateOf("NH-48 Bypass") }
     var pincodeQuery by remember { mutableStateOf("") }
 
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp).verticalScroll(rememberScrollState())) {
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Text(
             text = "National Assistance & Radar Locator",
             fontWeight = FontWeight.Black,
@@ -1658,6 +1986,7 @@ fun DriverServicesTab(viewModel: MainViewModel, lang: String) {
                             label = { Text("State", fontSize = 11.sp) },
                             placeholder = { Text("Rajasthan") },
                             singleLine = true,
+                            colors = getHighContrastTextFieldColors(),
                             modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(10.dp)
                         )
@@ -1667,6 +1996,7 @@ fun DriverServicesTab(viewModel: MainViewModel, lang: String) {
                             label = { Text("City", fontSize = 11.sp) },
                             placeholder = { Text("Jaipur") },
                             singleLine = true,
+                            colors = getHighContrastTextFieldColors(),
                             modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(10.dp)
                         )
@@ -1680,6 +2010,7 @@ fun DriverServicesTab(viewModel: MainViewModel, lang: String) {
                             label = { Text("Area/Landmark", fontSize = 11.sp) },
                             placeholder = { Text("NH-48 Bypass") },
                             singleLine = true,
+                            colors = getHighContrastTextFieldColors(),
                             modifier = Modifier.weight(1.5f),
                             shape = RoundedCornerShape(10.dp)
                         )
@@ -1693,6 +2024,7 @@ fun DriverServicesTab(viewModel: MainViewModel, lang: String) {
                             placeholder = { Text("302001") },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             singleLine = true,
+                            colors = getHighContrastTextFieldColors(),
                             modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(10.dp)
                         )
@@ -1746,7 +2078,12 @@ fun DriverServicesTab(viewModel: MainViewModel, lang: String) {
             )
             Spacer(modifier = Modifier.height(8.dp))
 
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
                 services.forEachIndexed { index, service ->
                     Card(
                         modifier = Modifier.fillMaxWidth(),
@@ -1970,24 +2307,34 @@ fun DriverTripsTab(viewModel: MainViewModel, allLoads: List<Load>, lang: String)
 
                             Divider(modifier = Modifier.padding(vertical = 12.dp))
 
-                            // Contact info (Unlocked because driver accepted)
+                            // Contact info (Unlocked because driver accepted, hidden after 2 completed trips)
+                            val completedTripsCount = allLoads.count { it.assignedDriverId == driver.id && it.status == "COMPLETED" }
+                            val hideShipperDetails = completedTripsCount >= 2
+
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Column {
-                                    Text("Shipper: ${load.shipperName}", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-                                    Text("Phone: ${load.shipperPhone}", fontSize = 12.sp)
-                                }
-                                IconButton(
-                                    onClick = {
-                                        val dialIntent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:${load.shipperPhone}"))
-                                        context.startActivity(dialIntent)
-                                    },
-                                    modifier = Modifier.clip(CircleShape).background(Color(0xFFE0F2FE))
-                                ) {
-                                    Icon(Icons.Default.Phone, contentDescription = "Call shipper", tint = Color(0xFF0369A1))
+                                if (hideShipperDetails) {
+                                    Column {
+                                        Text("Shipper: Contact Hidden", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = Color.Gray)
+                                        Text("Hidden under policy (First 2 trips completed)", fontSize = 12.sp, color = Color.Gray)
+                                    }
+                                } else {
+                                    Column {
+                                        Text("Shipper: ${load.shipperName}", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                                        Text("Phone: ${load.shipperPhone}", fontSize = 12.sp)
+                                    }
+                                    IconButton(
+                                        onClick = {
+                                            val dialIntent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:${load.shipperPhone}"))
+                                            context.startActivity(dialIntent)
+                                        },
+                                        modifier = Modifier.clip(CircleShape).background(Color(0xFFE0F2FE))
+                                    ) {
+                                        Icon(Icons.Default.Phone, contentDescription = "Call shipper", tint = Color(0xFF0369A1))
+                                    }
                                 }
                             }
 
@@ -2085,6 +2432,7 @@ fun ShipperHomeScreen(
                 "post_load" -> 0
                 "active_loads" -> 1
                 "trips" -> 2
+                "verification_jobs" -> 3
                 else -> 0
             },
             modifier = Modifier.testTag("shipper_top_navigation")
@@ -2092,20 +2440,26 @@ fun ShipperHomeScreen(
             Tab(
                 selected = selectedTab == "post_load",
                 onClick = { selectedTab = "post_load" },
-                text = { Text(Localization.get("nav_loads", lang), fontWeight = FontWeight.Bold) },
-                icon = { Icon(Icons.Default.AddBusiness, contentDescription = null) }
+                text = { Text(Localization.get("nav_loads", lang), fontWeight = FontWeight.Bold, fontSize = 10.sp) },
+                icon = { Icon(Icons.Default.AddBusiness, contentDescription = null, modifier = Modifier.size(18.dp)) }
             )
             Tab(
                 selected = selectedTab == "active_loads",
                 onClick = { selectedTab = "active_loads" },
-                text = { Text("Applications", fontWeight = FontWeight.Bold) },
-                icon = { Icon(Icons.Default.People, contentDescription = null) }
+                text = { Text("Applications", fontWeight = FontWeight.Bold, fontSize = 10.sp) },
+                icon = { Icon(Icons.Default.People, contentDescription = null, modifier = Modifier.size(18.dp)) }
             )
             Tab(
                 selected = selectedTab == "trips",
                 onClick = { selectedTab = "trips" },
-                text = { Text(Localization.get("nav_trips", lang), fontWeight = FontWeight.Bold) },
-                icon = { Icon(Icons.Default.Map, contentDescription = null) }
+                text = { Text(Localization.get("nav_trips", lang), fontWeight = FontWeight.Bold, fontSize = 10.sp) },
+                icon = { Icon(Icons.Default.Map, contentDescription = null, modifier = Modifier.size(18.dp)) }
+            )
+            Tab(
+                selected = selectedTab == "verification_jobs",
+                onClick = { selectedTab = "verification_jobs" },
+                text = { Text("Drivers & Jobs", fontWeight = FontWeight.Bold, fontSize = 10.sp) },
+                icon = { Icon(Icons.Default.Verified, contentDescription = null, modifier = Modifier.size(18.dp)) }
             )
         }
 
@@ -2118,6 +2472,7 @@ fun ShipperHomeScreen(
                 "post_load" -> ShipperPostLoadTab(viewModel = viewModel, lang = lang)
                 "active_loads" -> ShipperActiveLoadsTab(viewModel = viewModel, allLoads = allLoads, lang = lang, onBlockCommission = onBlockCommission)
                 "trips" -> ShipperTripsTab(viewModel = viewModel, allLoads = allLoads, lang = lang, trackingProgress = trackingProgress)
+                "verification_jobs" -> ShipperVerificationJobsTab(viewModel = viewModel, lang = lang)
             }
         }
     }
@@ -2416,6 +2771,7 @@ fun ShipperPostLoadTab(viewModel: MainViewModel, lang: String) {
                 placeholder = { Text("e.g. Jaipur") },
                 leadingIcon = { Icon(Icons.Default.LocationOn, contentDescription = null, tint = Color(0xFF10B981)) },
                 singleLine = true,
+                colors = getHighContrastTextFieldColors(),
                 modifier = Modifier.weight(1.5f),
                 shape = RoundedCornerShape(12.dp)
             )
@@ -2430,6 +2786,7 @@ fun ShipperPostLoadTab(viewModel: MainViewModel, lang: String) {
                 placeholder = { Text("302001") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 singleLine = true,
+                colors = getHighContrastTextFieldColors(),
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(12.dp)
             )
@@ -2449,6 +2806,7 @@ fun ShipperPostLoadTab(viewModel: MainViewModel, lang: String) {
                 placeholder = { Text("e.g. Delhi") },
                 leadingIcon = { Icon(Icons.Default.LocationOn, contentDescription = null, tint = Color(0xFFEF4444)) },
                 singleLine = true,
+                colors = getHighContrastTextFieldColors(),
                 modifier = Modifier.weight(1.5f),
                 shape = RoundedCornerShape(12.dp)
             )
@@ -2463,6 +2821,7 @@ fun ShipperPostLoadTab(viewModel: MainViewModel, lang: String) {
                 placeholder = { Text("110001") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 singleLine = true,
+                colors = getHighContrastTextFieldColors(),
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(12.dp)
             )
@@ -2476,6 +2835,7 @@ fun ShipperPostLoadTab(viewModel: MainViewModel, lang: String) {
             label = { Text(Localization.get("load_type_label", lang)) },
             placeholder = { Text("e.g. Steel, Cement, Parcels") },
             singleLine = true,
+            colors = getHighContrastTextFieldColors(),
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp)
         )
@@ -2525,6 +2885,7 @@ fun ShipperPostLoadTab(viewModel: MainViewModel, lang: String) {
                                 Icon(imageVector = Icons.Default.ArrowDropDown, contentDescription = null)
                             }
                         },
+                        colors = getHighContrastTextFieldColors(),
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp)
                     )
@@ -2554,6 +2915,7 @@ fun ShipperPostLoadTab(viewModel: MainViewModel, lang: String) {
                         label = { Text(Localization.get("dist_label", lang)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true,
+                        colors = getHighContrastTextFieldColors(),
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(12.dp)
                     )
@@ -2563,6 +2925,7 @@ fun ShipperPostLoadTab(viewModel: MainViewModel, lang: String) {
                         label = { Text(Localization.get("weight_label", lang)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true,
+                        colors = getHighContrastTextFieldColors(),
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(12.dp)
                     )
@@ -2577,6 +2940,7 @@ fun ShipperPostLoadTab(viewModel: MainViewModel, lang: String) {
                         label = { Text(Localization.get("rate_km_label", lang)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true,
+                        colors = getHighContrastTextFieldColors(),
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(12.dp)
                     )
@@ -2586,6 +2950,7 @@ fun ShipperPostLoadTab(viewModel: MainViewModel, lang: String) {
                         label = { Text(Localization.get("rate_ton_label", lang)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true,
+                        colors = getHighContrastTextFieldColors(),
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(12.dp)
                     )
@@ -2948,24 +3313,34 @@ fun ShipperTripsTab(
 
                             Divider(modifier = Modifier.padding(vertical = 12.dp))
 
-                            // Contact info unlocked
+                            // Contact info unlocked, hidden after 2 completed trips
+                            val completedTripsCount = allLoads.count { it.shipperId == shipper.id && it.status == "COMPLETED" }
+                            val hideDriverDetails = completedTripsCount >= 2
+
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Column {
-                                    Text("Driver: ${load.assignedDriverName}", fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                                    Text("Phone: ${load.assignedDriverPhone}", fontSize = 12.sp)
-                                }
-                                IconButton(
-                                    onClick = {
-                                        val dialIntent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:${load.assignedDriverPhone}"))
-                                        context.startActivity(dialIntent)
-                                    },
-                                    modifier = Modifier.clip(CircleShape).background(Color(0xFFDCFCE7))
-                                ) {
-                                    Icon(Icons.Default.Phone, contentDescription = "Call driver", tint = Color(0xFF15803D))
+                                if (hideDriverDetails) {
+                                    Column {
+                                        Text("Driver: Contact Hidden", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color.Gray)
+                                        Text("Hidden under policy (First 2 trips completed)", fontSize = 12.sp, color = Color.Gray)
+                                    }
+                                } else {
+                                    Column {
+                                        Text("Driver: ${load.assignedDriverName}", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                        Text("Phone: ${load.assignedDriverPhone}", fontSize = 12.sp)
+                                    }
+                                    IconButton(
+                                        onClick = {
+                                            val dialIntent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:${load.assignedDriverPhone}"))
+                                            context.startActivity(dialIntent)
+                                        },
+                                        modifier = Modifier.clip(CircleShape).background(Color(0xFFDCFCE7))
+                                    ) {
+                                        Icon(Icons.Default.Phone, contentDescription = "Call driver", tint = Color(0xFF15803D))
+                                    }
                                 }
                             }
 
@@ -3515,5 +3890,722 @@ fun RatingDialog(load: Load, lang: String, onDismiss: () -> Unit) {
                 }
             }
         }
+    }
+}
+
+@Composable
+fun DriverJobsTab(viewModel: MainViewModel, lang: String) {
+    val context = LocalContext.current
+    val allJobs by viewModel.allJobs.collectAsStateWithLifecycle()
+    val driver = viewModel.currentUser.collectAsStateWithLifecycle().value ?: return
+
+    var showApplyDialog by remember { mutableStateOf(false) }
+    var selectedJobForApply by remember { mutableStateOf<com.example.data.JobProfile?>(null) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        Text(
+            text = "AVAILABLE JOB PROFILES",
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Black,
+            color = com.example.ui.theme.Color74777F,
+            letterSpacing = 1.sp,
+            modifier = Modifier.padding(bottom = 12.dp)
+        )
+
+        if (allJobs.isEmpty()) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("No job profiles posted yet.", color = Color.Gray, fontSize = 14.sp)
+            }
+        } else {
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                items(allJobs) { job ->
+                    val applicantIds = job.getApplicantIds()
+                    val hasApplied = applicantIds.contains(driver.id)
+
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("driver_job_card_${job.id}"),
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                        elevation = CardDefaults.cardElevation(2.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = job.workTitle,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 16.sp,
+                                    color = com.example.ui.theme.Color1B1B1F
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .background(Color(0xFFEFF6FF), RoundedCornerShape(8.dp))
+                                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                                ) {
+                                    Text(
+                                        text = job.salaryText,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Black,
+                                        color = Color(0xFF1D4ED8)
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Shipper: ${job.shipperName}",
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 13.sp,
+                                color = com.example.ui.theme.Color74777F
+                            )
+                            Text(
+                                text = "Location: ${job.location}",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp,
+                                color = com.example.ui.theme.Color005AC1
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = job.description,
+                                fontSize = 13.sp,
+                                color = Color.DarkGray
+                            )
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            Button(
+                                onClick = {
+                                    selectedJobForApply = job
+                                    showApplyDialog = true
+                                },
+                                enabled = !hasApplied,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(44.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (hasApplied) Color.Gray else com.example.ui.theme.Color005AC1
+                                ),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text(
+                                    text = if (hasApplied) "Applied ✓" else "APPLY FOR THIS JOB",
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (showApplyDialog && selectedJobForApply != null) {
+        val job = selectedJobForApply!!
+        Dialog(onDismissRequest = { showApplyDialog = false }) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                border = BorderStroke(1.5.dp, Color.Black)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .verticalScroll(rememberScrollState()),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "Apply for: ${job.workTitle}",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        color = Color.Black
+                    )
+                    Text(
+                        text = "Confirm Verifiable Documents",
+                        fontSize = 12.sp,
+                        color = Color.Gray,
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    )
+
+                    var editDl by remember { mutableStateOf(driver.dlPath.ifBlank { "simulated_dl_doc.jpg" }) }
+                    var editRc by remember { mutableStateOf(driver.rcPath.ifBlank { "simulated_rc_doc.jpg" }) }
+                    var editAadhaar by remember { mutableStateOf(driver.aadhaarPath.ifBlank { "simulated_aadhaar_doc.jpg" }) }
+                    var editPermit by remember { mutableStateOf(driver.permitPath.ifBlank { "simulated_permit_doc.jpg" }) }
+
+                    OutlinedTextField(
+                        value = editDl,
+                        onValueChange = { editDl = it },
+                        label = { Text("Driving License (DL) File/No.") },
+                        singleLine = true,
+                        colors = getHighContrastTextFieldColors(),
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                    )
+
+                    OutlinedTextField(
+                        value = editRc,
+                        onValueChange = { editRc = it },
+                        label = { Text("Registration Certificate (RC) File/No.") },
+                        singleLine = true,
+                        colors = getHighContrastTextFieldColors(),
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                    )
+
+                    OutlinedTextField(
+                        value = editAadhaar,
+                        onValueChange = { editAadhaar = it },
+                        label = { Text("Aadhaar Card File/No.") },
+                        singleLine = true,
+                        colors = getHighContrastTextFieldColors(),
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                    )
+
+                    OutlinedTextField(
+                        value = editPermit,
+                        onValueChange = { editPermit = it },
+                        label = { Text("Vehicle Permit File/No.") },
+                        singleLine = true,
+                        colors = getHighContrastTextFieldColors(),
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        TextButton(
+                            onClick = { showApplyDialog = false },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("Cancel", color = Color.Red, fontWeight = FontWeight.Bold)
+                        }
+
+                        Button(
+                            onClick = {
+                                viewModel.updateDriverDocs(editDl, editRc, editAadhaar, editPermit) {
+                                    viewModel.applyForJob(job.id) { success, msg ->
+                                        Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                                        if (success) {
+                                            showApplyDialog = false
+                                        }
+                                    }
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = com.example.ui.theme.Color005AC1),
+                            modifier = Modifier.weight(1.5f)
+                        ) {
+                            Text("Submit Application", fontWeight = FontWeight.Bold, color = Color.White)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ShipperVerificationJobsTab(viewModel: MainViewModel, lang: String) {
+    val context = LocalContext.current
+    var subTab by remember { mutableStateOf("verify") } // "verify" or "jobs"
+    val allDrivers by viewModel.allDrivers.collectAsStateWithLifecycle()
+    val allJobs by viewModel.allJobs.collectAsStateWithLifecycle()
+    val currentShipper = viewModel.currentUser.collectAsStateWithLifecycle().value ?: return
+
+    // Job Posting Form State
+    var workTitle by remember { mutableStateOf("") }
+    var salaryText by remember { mutableStateOf("") }
+    var jobLocation by remember { mutableStateOf("") }
+    var jobDescription by remember { mutableStateOf("") }
+
+    // Selected Driver for Dialog Document View
+    var selectedDriverForDocView by remember { mutableStateOf<User?>(null) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        // Sub Navigation Header
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Button(
+                onClick = { subTab = "verify" },
+                modifier = Modifier.weight(1f),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (subTab == "verify") com.example.ui.theme.Color005AC1 else com.example.ui.theme.ColorE0E2EC,
+                    contentColor = if (subTab == "verify") Color.White else com.example.ui.theme.Color1B1B1F
+                ),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Icon(Icons.Default.Verified, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Verify Drivers", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            }
+
+            Button(
+                onClick = { subTab = "jobs" },
+                modifier = Modifier.weight(1f),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (subTab == "jobs") com.example.ui.theme.Color005AC1 else com.example.ui.theme.ColorE0E2EC,
+                    contentColor = if (subTab == "jobs") Color.White else com.example.ui.theme.Color1B1B1F
+                ),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Icon(Icons.Default.AddBusiness, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Post & Manage Jobs", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+
+        if (subTab == "verify") {
+            // VERIFY DRIVERS PANEL
+            Text(
+                text = "REGISTERED DRIVERS FOR VERIFICATION",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Black,
+                color = com.example.ui.theme.Color74777F,
+                letterSpacing = 1.sp,
+                modifier = Modifier.padding(bottom = 12.dp)
+            )
+
+            if (allDrivers.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("No drivers registered yet.", color = Color.Gray, fontSize = 14.sp)
+                }
+            } else {
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    items(allDrivers) { driver ->
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("driver_verify_card_${driver.id}"),
+                            colors = CardDefaults.cardColors(containerColor = Color.White),
+                            border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                            elevation = CardDefaults.cardElevation(2.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column {
+                                        Text(
+                                            text = driver.name,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 16.sp,
+                                            color = com.example.ui.theme.Color1B1B1F
+                                        )
+                                        Text(
+                                            text = "Phone: +91 ${driver.phone}",
+                                            fontWeight = FontWeight.Medium,
+                                            fontSize = 13.sp,
+                                            color = com.example.ui.theme.Color005AC1
+                                        )
+                                    }
+                                    
+                                    // Status Badge
+                                    Box(
+                                        modifier = Modifier
+                                            .background(
+                                                color = if (driver.isApproved) Color(0xFFDCFCE7) else Color(0xFFFEE2E2),
+                                                shape = RoundedCornerShape(8.dp)
+                                            )
+                                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                                    ) {
+                                        Text(
+                                            text = if (driver.isApproved) "APPROVED ✓" else "PENDING",
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Black,
+                                            color = if (driver.isApproved) Color(0xFF15803D) else Color(0xFFB91C1C)
+                                        )
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(12.dp))
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Column {
+                                        Text("Truck Number", fontSize = 10.sp, color = Color.Gray)
+                                        Text(driver.truckNumber.ifBlank { "N/A" }, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                    }
+                                    Column {
+                                        Text("Truck Size", fontSize = 10.sp, color = Color.Gray)
+                                        Text(driver.truckSize.ifBlank { "N/A" }, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                    }
+                                    Column {
+                                        Text("Documents", fontSize = 10.sp, color = Color.Gray)
+                                        Text("4 Files Uploaded", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color(0xFF0F766E))
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(16.dp))
+
+                                Button(
+                                    onClick = { selectedDriverForDocView = driver },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(44.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = com.example.ui.theme.Color1B1B1F),
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Icon(Icons.Default.CloudUpload, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("View Documents & Verification Info", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            // POST & MANAGE JOBS PANEL
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(20.dp)
+            ) {
+                item {
+                    // Create Job Form
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
+                        border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                text = "POST A NEW JOB PROFILE",
+                                fontWeight = FontWeight.Black,
+                                fontSize = 12.sp,
+                                color = com.example.ui.theme.Color1B1B1F,
+                                letterSpacing = 1.sp
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            OutlinedTextField(
+                                value = workTitle,
+                                onValueChange = { workTitle = it },
+                                label = { Text("Work Title (e.g. Jaipur to Ahmedabad Driver)") },
+                                singleLine = true,
+                                colors = getHighContrastTextFieldColors(),
+                                modifier = Modifier.fillMaxWidth().testTag("job_title_input")
+                            )
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                OutlinedTextField(
+                                    value = salaryText,
+                                    onValueChange = { salaryText = it },
+                                    label = { Text("Salary (e.g. ₹28,000 / month)") },
+                                    singleLine = true,
+                                    colors = getHighContrastTextFieldColors(),
+                                    modifier = Modifier.weight(1f).testTag("job_salary_input")
+                                )
+                                OutlinedTextField(
+                                    value = jobLocation,
+                                    onValueChange = { jobLocation = it },
+                                    label = { Text("Work Location (City)") },
+                                    singleLine = true,
+                                    colors = getHighContrastTextFieldColors(),
+                                    modifier = Modifier.weight(1f).testTag("job_location_input")
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            OutlinedTextField(
+                                value = jobDescription,
+                                onValueChange = { jobDescription = it },
+                                label = { Text("Detailed Job Description") },
+                                maxLines = 3,
+                                colors = getHighContrastTextFieldColors(),
+                                modifier = Modifier.fillMaxWidth().testTag("job_desc_input")
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            Button(
+                                onClick = {
+                                    viewModel.postJob(
+                                        workTitle = workTitle,
+                                        salaryText = salaryText,
+                                        location = jobLocation,
+                                        description = jobDescription
+                                    ) { success, msg ->
+                                        Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                                        if (success) {
+                                            workTitle = ""
+                                            salaryText = ""
+                                            jobLocation = ""
+                                            jobDescription = ""
+                                        }
+                                    }
+                                },
+                                enabled = workTitle.isNotBlank() && salaryText.isNotBlank() && jobLocation.isNotBlank(),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(48.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = com.example.ui.theme.Color005AC1)
+                            ) {
+                                Text("POST JOB PROFILE", fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+
+                item {
+                    Text(
+                        text = "YOUR POSTED JOBS",
+                        fontWeight = FontWeight.Black,
+                        fontSize = 12.sp,
+                        color = com.example.ui.theme.Color74777F,
+                        letterSpacing = 1.sp
+                    )
+                }
+
+                val shipperJobs = allJobs.filter { it.shipperId == currentShipper.id }
+                if (shipperJobs.isEmpty()) {
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = Color.White)
+                        ) {
+                            Box(modifier = Modifier.padding(24.dp).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                Text("No job profiles posted yet.", color = Color.Gray, fontSize = 13.sp)
+                            }
+                        }
+                    }
+                } else {
+                    items(shipperJobs) { job ->
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = Color.White),
+                            border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(job.workTitle, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = com.example.ui.theme.Color1B1B1F)
+                                    Box(
+                                        modifier = Modifier
+                                            .background(Color(0xFFEFF6FF), RoundedCornerShape(8.dp))
+                                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                                    ) {
+                                        Text(job.salaryText, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1D4ED8))
+                                    }
+                                }
+                                Text("Location: ${job.location}", fontSize = 13.sp, color = com.example.ui.theme.Color005AC1, fontWeight = FontWeight.Medium)
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(job.description, fontSize = 13.sp, color = Color.DarkGray)
+
+                                Divider(modifier = Modifier.padding(vertical = 12.dp))
+
+                                val applicantIds = job.getApplicantIds()
+                                Text(
+                                    text = "APPLICANTS (${applicantIds.size})",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = com.example.ui.theme.Color74777F,
+                                    letterSpacing = 0.5.sp,
+                                    modifier = Modifier.padding(bottom = 8.dp)
+                                )
+
+                                if (applicantIds.isEmpty()) {
+                                    Text("No applications received yet.", fontSize = 12.sp, color = Color.Gray, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic)
+                                } else {
+                                    val applicants = allDrivers.filter { applicantIds.contains(it.id) }
+                                    applicants.forEach { driver ->
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .background(Color(0xFFF8FAFC), RoundedCornerShape(8.dp))
+                                                .padding(8.dp),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Column {
+                                                Text(driver.name, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                                Text("Phone: +91 ${driver.phone}", fontSize = 11.sp, color = com.example.ui.theme.Color005AC1)
+                                            }
+                                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                Button(
+                                                    onClick = { selectedDriverForDocView = driver },
+                                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7)),
+                                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                                                    shape = RoundedCornerShape(6.dp),
+                                                    modifier = Modifier.height(28.dp)
+                                                ) {
+                                                    Text("Review Docs", fontSize = 10.sp, color = Color.White)
+                                                }
+                                            }
+                                        }
+                                        Spacer(modifier = Modifier.height(6.dp))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Elegant Driver Document Inspection & Approval Dialog
+    selectedDriverForDocView?.let { driver ->
+        AlertDialog(
+            onDismissRequest = { selectedDriverForDocView = null },
+            title = {
+                Column {
+                    Text("Driver Verification Detail", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    Text("Review registered documents carefully before action.", fontSize = 12.sp, color = Color.Gray)
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFF1F5F9))
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text("NAME: ${driver.name}", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Text("MOBILE NO: +91 ${driver.phone}", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = com.example.ui.theme.Color005AC1)
+                            Text("TRUCK NO: ${driver.truckNumber}", fontSize = 13.sp)
+                            Text("TRUCK SIZE: ${driver.truckSize}", fontSize = 13.sp)
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Verification Status: " + if (driver.isApproved) "Approved ✓" else "Pending Review",
+                                fontWeight = FontWeight.ExtraBold,
+                                color = if (driver.isApproved) Color(0xFF16A34A) else Color(0xFFDC2626),
+                                fontSize = 13.sp
+                            )
+                        }
+                    }
+
+                    Text("1. DRIVING LICENSE (DL)", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(100.dp)
+                            .background(Color(0xFFE2E8F0), RoundedCornerShape(8.dp))
+                            .border(1.dp, Color.Gray, RoundedCornerShape(8.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(Icons.Default.Image, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(32.dp))
+                            Text("Driving License File", fontWeight = FontWeight.Medium, fontSize = 12.sp)
+                            Text(driver.dlPath, fontSize = 10.sp, color = Color.Gray)
+                        }
+                    }
+
+                    Text("2. REGISTRATION CERTIFICATE (RC)", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(100.dp)
+                            .background(Color(0xFFE2E8F0), RoundedCornerShape(8.dp))
+                            .border(1.dp, Color.Gray, RoundedCornerShape(8.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(Icons.Default.Image, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(32.dp))
+                            Text("Vehicle RC File", fontWeight = FontWeight.Medium, fontSize = 12.sp)
+                            Text(driver.rcPath, fontSize = 10.sp, color = Color.Gray)
+                        }
+                    }
+
+                    Text("3. AADHAAR CARD", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(100.dp)
+                            .background(Color(0xFFE2E8F0), RoundedCornerShape(8.dp))
+                            .border(1.dp, Color.Gray, RoundedCornerShape(8.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(Icons.Default.Image, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(32.dp))
+                            Text("Aadhaar Card File", fontWeight = FontWeight.Medium, fontSize = 12.sp)
+                            Text(driver.aadhaarPath, fontSize = 10.sp, color = Color.Gray)
+                        }
+                    }
+
+                    Text("4. VEHICLE PERMIT / PHOTO", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(100.dp)
+                            .background(Color(0xFFE2E8F0), RoundedCornerShape(8.dp))
+                            .border(1.dp, Color.Gray, RoundedCornerShape(8.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(Icons.Default.Image, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(32.dp))
+                            Text("Permit / Photo File", fontWeight = FontWeight.Medium, fontSize = 12.sp)
+                            Text(driver.permitPath, fontSize = 10.sp, color = Color.Gray)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.approveDriver(driver.id) { success, msg ->
+                            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                            if (success) {
+                                selectedDriverForDocView = null
+                            }
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF16A34A)),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text("APPROVE DRIVER")
+                }
+            },
+            dismissButton = {
+                Button(
+                    onClick = {
+                        viewModel.rejectDriver(driver.id) { success, msg ->
+                            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                            if (success) {
+                                selectedDriverForDocView = null
+                            }
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626)),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text("REJECT")
+                }
+            }
+        )
     }
 }

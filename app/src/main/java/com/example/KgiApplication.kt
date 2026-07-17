@@ -26,7 +26,8 @@ class KgiApplication : Application() {
             userDao = database.userDao(),
             loadDao = database.loadDao(),
             chatDao = database.chatDao(),
-            commissionDao = database.commissionDao()
+            commissionDao = database.commissionDao(),
+            jobDao = database.jobDao()
         )
     }
 }

@@ -15,7 +15,7 @@ data class User(
     val rcPath: String = "",
     val dlPath: String = "",
     val aadhaarPath: String = "",
-    val permitPath: String = "",
+    val permitPath: String = "", // Also acts as Driver Photo path
     val isApproved: Boolean = false // Drivers must be verified/approved
 ) {
     fun isDriver() = role == "DRIVER"
@@ -76,5 +76,33 @@ data class CommissionPayment(
     val amount: Double,
     val isPaid: Boolean = false,
     val upiIdUsed: String = "9660033436@pthdfc",
+    val utrNumber: String = "",
+    val payeePhone: String = "",
     val timestamp: Long = System.currentTimeMillis()
 )
+
+@Entity(tableName = "job_profiles")
+data class JobProfile(
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val shipperId: Int,
+    val shipperName: String,
+    val shipperPhone: String,
+    val workTitle: String,
+    val salaryText: String,
+    val location: String,
+    val description: String,
+    val applicantsString: String = "", // Comma-separated list of driver IDs who applied
+    val createdAt: Long = System.currentTimeMillis()
+) {
+    fun getApplicantIds(): List<Int> {
+        if (applicantsString.isBlank()) return emptyList()
+        return applicantsString.split(",").mapNotNull { it.toIntOrNull() }
+    }
+
+    fun withApplicant(driverId: Int): JobProfile {
+        val currentIds = getApplicantIds()
+        if (currentIds.contains(driverId)) return this
+        val newString = if (applicantsString.isBlank()) "$driverId" else "$applicantsString,$driverId"
+        return this.copy(applicantsString = newString)
+    }
+}

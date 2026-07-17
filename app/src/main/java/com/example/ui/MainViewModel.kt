@@ -61,6 +61,10 @@ class MainViewModel(
     val allLoads: StateFlow<List<Load>> = repository.getAllLoads()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    // All registered drivers (for Shippers to review and approve/reject)
+    val allDrivers: StateFlow<List<User>> = repository.getAllDrivers()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     // Live chat messages for the currently selected load
     private val _activeLoadIdForChat = MutableStateFlow<Int?>(null)
     val activeChatMessages: StateFlow<List<ChatMessage>> = _activeLoadIdForChat
@@ -427,6 +431,178 @@ class MainViewModel(
                 startTrackingAnimation(loadId)
             } else if (newStatus == "COMPLETED") {
                 stopTrackingAnimation(loadId)
+
+                // When load is completed, generate commissions if shipper/driver completed count >= 2
+                val shipperId = load.shipperId
+                val shipperCompletedCount = repository.getCompletedLoadsCountForShipper(shipperId)
+                if (shipperCompletedCount >= 2) {
+                    val commissionAmount = load.totalFare * commissionRate
+                    val newCommission = CommissionPayment(
+                        driverId = 0,
+                        shipperId = shipperId,
+                        loadId = loadId,
+                        amount = commissionAmount,
+                        isPaid = false,
+                        upiIdUsed = adminUpiId
+                    )
+                    repository.insertCommission(newCommission)
+                }
+
+                val driverId = load.assignedDriverId
+                if (driverId != null) {
+                    val driverCompletedCount = repository.getCompletedLoadsCountForDriver(driverId)
+                    if (driverCompletedCount >= 2) {
+                        val commissionAmount = load.totalFare * commissionRate
+                        val newCommission = CommissionPayment(
+                            driverId = driverId,
+                            shipperId = 0,
+                            loadId = loadId,
+                            amount = commissionAmount,
+                            isPaid = false,
+                            upiIdUsed = adminUpiId
+                        )
+                        repository.insertCommission(newCommission)
+                    }
+                }
+            }
+        }
+    }
+
+    // Job Posting and Application Lists & Actions
+    val allJobs: StateFlow<List<JobProfile>> = repository.getAllJobs()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    fun postJob(
+        workTitle: String,
+        salaryText: String,
+        location: String,
+        description: String,
+        onResult: (Boolean, String) -> Unit
+    ) {
+        val shipper = currentUser.value ?: return
+        viewModelScope.launch {
+            if (workTitle.isBlank() || salaryText.isBlank() || location.isBlank() || description.isBlank()) {
+                onResult(false, "Please fill in all fields with valid information.")
+                return@launch
+            }
+            val job = JobProfile(
+                shipperId = shipper.id,
+                shipperName = shipper.name,
+                shipperPhone = shipper.phone,
+                workTitle = workTitle,
+                salaryText = salaryText,
+                location = location,
+                description = description
+            )
+            repository.insertJob(job)
+            onResult(true, "Job profile posted successfully!")
+        }
+    }
+
+    fun updateDriverDocs(dl: String, rc: String, aadhaar: String, permit: String, onComplete: () -> Unit) {
+        val user = _currentUser.value ?: return
+        viewModelScope.launch {
+            val updated = user.copy(
+                dlPath = dl,
+                rcPath = rc,
+                aadhaarPath = aadhaar,
+                permitPath = permit
+            )
+            repository.updateUser(updated)
+            _currentUser.value = updated
+            onComplete()
+        }
+    }
+
+    fun applyForJob(jobId: Int, onResult: (Boolean, String) -> Unit) {
+        val driver = currentUser.value ?: return
+        viewModelScope.launch {
+            val job = repository.getJobByIdSync(jobId) ?: return@launch
+            // Verify driver has documents uploaded (Aadhaar, DL, and Photo / PermitPath)
+            if (driver.aadhaarPath.isBlank() || driver.dlPath.isBlank() || driver.permitPath.isBlank()) {
+                onResult(false, "Please complete your profile with Aadhaar, DL, and Photo before applying.")
+                return@launch
+            }
+            val updated = job.withApplicant(driver.id)
+            repository.updateJob(updated)
+            onResult(true, "Applied successfully! Shipper can now review your documents.")
+        }
+    }
+
+    suspend fun isShipperBlockedFromPosting(shipperId: Int): Boolean {
+        val completedCount = repository.getCompletedLoadsCountForShipper(shipperId)
+        if (completedCount < 2) return false
+        val unpaid = repository.getUnpaidCommissionsForShipper(shipperId)
+        return unpaid.isNotEmpty()
+    }
+
+    suspend fun isDriverBlockedFromApplying(driverId: Int): Boolean {
+        val completedCount = repository.getCompletedLoadsCountForDriver(driverId)
+        if (completedCount < 2) return false
+        val unpaid = repository.getUnpaidCommissionsForDriver(driverId)
+        return unpaid.isNotEmpty()
+    }
+
+    fun submitShipperCommissionPayment(shipperId: Int, utr: String, phone: String, onResult: (Boolean, String) -> Unit) {
+        viewModelScope.launch {
+            if (utr.trim().isBlank() || phone.trim().isBlank()) {
+                onResult(false, "Please enter both UTR/Transaction ID and mobile number.")
+                return@launch
+            }
+            val unpaid = repository.getUnpaidCommissionsForShipper(shipperId)
+            if (unpaid.isEmpty()) {
+                onResult(true, "No pending commissions to pay!")
+                return@launch
+            }
+            unpaid.forEach { comm ->
+                val updated = comm.copy(isPaid = true, utrNumber = utr, payeePhone = phone)
+                repository.updateCommission(updated)
+            }
+            onResult(true, "Commission payment proof submitted! Access fully restored.")
+        }
+    }
+
+    fun submitDriverCommissionPayment(driverId: Int, utr: String, phone: String, onResult: (Boolean, String) -> Unit) {
+        viewModelScope.launch {
+            if (utr.trim().isBlank() || phone.trim().isBlank()) {
+                onResult(false, "Please enter both UTR/Transaction ID and mobile number.")
+                return@launch
+            }
+            val unpaid = repository.getUnpaidCommissionsForDriver(driverId)
+            if (unpaid.isEmpty()) {
+                onResult(true, "No pending commissions to pay!")
+                return@launch
+            }
+            unpaid.forEach { comm ->
+                val updated = comm.copy(isPaid = true, utrNumber = utr, payeePhone = phone)
+                repository.updateCommission(updated)
+            }
+            onResult(true, "Commission payment proof submitted! Application and details unlocked.")
+        }
+    }
+
+    fun approveDriver(driverId: Int, onResult: (Boolean, String) -> Unit) {
+        viewModelScope.launch {
+            val user = repository.getUserSync(driverId)
+            if (user != null) {
+                val updated = user.copy(isApproved = true)
+                repository.updateUser(updated)
+                onResult(true, "Driver successfully approved!")
+            } else {
+                onResult(false, "Driver not found.")
+            }
+        }
+    }
+
+    fun rejectDriver(driverId: Int, onResult: (Boolean, String) -> Unit) {
+        viewModelScope.launch {
+            val user = repository.getUserSync(driverId)
+            if (user != null) {
+                val updated = user.copy(isApproved = false)
+                repository.updateUser(updated)
+                onResult(true, "Driver application rejected.")
+            } else {
+                onResult(false, "Driver not found.")
             }
         }
     }

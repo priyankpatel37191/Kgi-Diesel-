@@ -28,6 +28,9 @@ interface UserDao {
 
     @Query("SELECT * FROM users WHERE id IN (:ids)")
     fun getDriversByIds(ids: List<Int>): Flow<List<User>>
+
+    @Query("SELECT * FROM users WHERE role = 'DRIVER'")
+    fun getAllDrivers(): Flow<List<User>>
 }
 
 @Dao
@@ -55,6 +58,12 @@ interface LoadDao {
 
     @Query("SELECT COUNT(*) FROM loads WHERE assignedDriverId = :driverId AND shipperId = :shipperId AND status = 'COMPLETED'")
     suspend fun getCompletedLoadsCountBetween(driverId: Int, shipperId: Int): Int
+
+    @Query("SELECT COUNT(*) FROM loads WHERE shipperId = :shipperId AND status = 'COMPLETED'")
+    suspend fun getCompletedLoadsCountForShipper(shipperId: Int): Int
+
+    @Query("SELECT COUNT(*) FROM loads WHERE assignedDriverId = :driverId AND status = 'COMPLETED'")
+    suspend fun getCompletedLoadsCountForDriver(driverId: Int): Int
 }
 
 @Dao
@@ -79,11 +88,35 @@ interface CommissionDao {
 
     @Update
     suspend fun updateCommission(commission: CommissionPayment)
+
+    @Query("SELECT * FROM commissions WHERE shipperId = :shipperId AND isPaid = 0")
+    suspend fun getUnpaidCommissionsForShipper(shipperId: Int): List<CommissionPayment>
+
+    @Query("SELECT * FROM commissions WHERE driverId = :driverId AND isPaid = 0")
+    suspend fun getUnpaidCommissionsForDriver(driverId: Int): List<CommissionPayment>
+}
+
+@Dao
+interface JobDao {
+    @Query("SELECT * FROM job_profiles ORDER BY createdAt DESC")
+    fun getAllJobs(): Flow<List<JobProfile>>
+
+    @Query("SELECT * FROM job_profiles WHERE shipperId = :shipperId ORDER BY createdAt DESC")
+    fun getJobsByShipper(shipperId: Int): Flow<List<JobProfile>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertJob(job: JobProfile): Long
+
+    @Update
+    suspend fun updateJob(job: JobProfile)
+
+    @Query("SELECT * FROM job_profiles WHERE id = :id")
+    suspend fun getJobByIdSync(id: Int): JobProfile?
 }
 
 @Database(
-    entities = [User::class, Load::class, ChatMessage::class, CommissionPayment::class],
-    version = 1,
+    entities = [User::class, Load::class, ChatMessage::class, CommissionPayment::class, JobProfile::class],
+    version = 2, // Bump version to force destructive migration cleanly
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -91,4 +124,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun loadDao(): LoadDao
     abstract fun chatDao(): ChatDao
     abstract fun commissionDao(): CommissionDao
+    abstract fun jobDao(): JobDao
 }
