@@ -31,9 +31,15 @@ class MainViewModel(
         language = if (language == "en") "hi" else "en"
     }
 
-    // Current logged in user
-    private val _currentUser = MutableStateFlow<User?>(null)
-    val currentUser: StateFlow<User?> = _currentUser.asStateFlow()
+    // Current logged in user ID
+    private val _currentUserId = MutableStateFlow<Int?>(null)
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val currentUser: StateFlow<User?> = _currentUserId
+        .flatMapLatest { id ->
+            if (id != null) repository.getUser(id)
+            else flowOf(null)
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     // Flag to check if current driver location tracking is enabled
     var gpsEnabled by mutableStateOf(false)
@@ -184,7 +190,7 @@ class MainViewModel(
                 if (existing.role != role) {
                     onResult(false, "User already registered as ${existing.role}.")
                 } else {
-                    _currentUser.value = existing
+                    _currentUserId.value = existing.id
                     currentScreen = if (existing.role == "DRIVER") "driver_home" else "shipper_home"
                     onResult(true, "Welcome back, ${existing.name}!")
                 }
@@ -235,8 +241,7 @@ class MainViewModel(
             )
 
             val newId = repository.insertUser(newUser).toInt()
-            val savedUser = newUser.copy(id = newId)
-            _currentUser.value = savedUser
+            _currentUserId.value = newId
             currentScreen = "driver_home"
             onResult(true, "Driver profile created successfully!")
         }
@@ -271,15 +276,14 @@ class MainViewModel(
             )
 
             val newId = repository.insertUser(newUser).toInt()
-            val savedUser = newUser.copy(id = newId)
-            _currentUser.value = savedUser
+            _currentUserId.value = newId
             currentScreen = "shipper_home"
             onResult(true, "Shipper account created successfully!")
         }
     }
 
     fun logout() {
-        _currentUser.value = null
+        _currentUserId.value = null
         currentScreen = "landing"
     }
 
@@ -500,7 +504,7 @@ class MainViewModel(
     }
 
     fun updateDriverDocs(dl: String, rc: String, aadhaar: String, permit: String, onComplete: () -> Unit) {
-        val user = _currentUser.value ?: return
+        val user = currentUser.value ?: return
         viewModelScope.launch {
             val updated = user.copy(
                 dlPath = dl,
@@ -509,14 +513,14 @@ class MainViewModel(
                 permitPath = permit
             )
             repository.updateUser(updated)
-            _currentUser.value = updated
             onComplete()
         }
     }
 
     fun applyForJob(jobId: Int, onResult: (Boolean, String) -> Unit) {
-        val driver = currentUser.value ?: return
+        val driverSession = currentUser.value ?: return
         viewModelScope.launch {
+            val driver = repository.getUserSync(driverSession.id) ?: return@launch
             val job = repository.getJobByIdSync(jobId) ?: return@launch
             // Verify driver has documents uploaded (Aadhaar, DL, and Photo / PermitPath)
             if (driver.aadhaarPath.isBlank() || driver.dlPath.isBlank() || driver.permitPath.isBlank()) {
@@ -686,118 +690,139 @@ class MainViewModel(
         state: String = "",
         area: String = ""
     ): List<NearbyService> {
-        val displayCity = city.ifBlank { "Jaipur" }
-        val displayPincode = pincode.ifBlank { "302001" }
-        val displayState = state.ifBlank { "Rajasthan" }
-        val displayArea = area.ifBlank { "NH-48 Hwy near $displayCity" }
+        val displayCity = city.ifBlank { "Jaipur" }.trim()
+        val displayPincode = pincode.ifBlank { "302001" }.trim()
+        val displayState = state.ifBlank { "Rajasthan" }.trim()
+        val displayArea = area.ifBlank { "NH-48 Bypass" }.trim()
 
         val baseInfo = ", Location: $displayArea, $displayCity, $displayState - $displayPincode"
 
-        return when (categoryId) {
+        val rawServices = when (categoryId) {
             "garages" -> listOf(
-                NearbyService("Shree Balaji Truck Service Center", 1.2, "9660033436", "Puncture repair, tire changing, wheel alignment & air check" + baseInfo, 0.005, -0.003),
-                NearbyService("Krishna Multi-brand Commercial Hub", 2.1, "9112233445", "Authorized spares of Tata, Leyland & Eicher commercial trucks" + baseInfo, -0.008, 0.005),
-                NearbyService("National Diesel Fuel Injector Point", 2.8, "9876543210", "FIP calibrators, nozzle settings & diesel leak experts" + baseInfo, 0.012, -0.009),
-                NearbyService("Highway Mech Care & Breakdown Point", 3.4, "9660033436", "24/7 Breakdown mechanical support, suspension repairs" + baseInfo, -0.015, 0.011),
-                NearbyService("Jaipur NH-48 Heavy Mech Point", 4.0, "9829055443", "Engine repair, clutch overhaul & gearbox setting" + baseInfo, 0.018, -0.014),
-                NearbyService("Apex Authorized Commercial Service", 4.7, "9112233445", "Authorized Leyland mechanics, engine diagnostics" + baseInfo, -0.022, 0.016),
-                NearbyService("Royal Truck Hub & Brake Service", 5.5, "9876543210", "Air brake setting, booster replacement & drum cutting" + baseInfo, 0.025, -0.021),
-                NearbyService("Express Wheel Alignment Commercials", 6.2, "9112233445", "Laser computer alignment for 10-to-22 wheeler multi-axle trailers" + baseInfo, -0.029, 0.024),
-                NearbyService("Jaipur Leaf Spring Repair (Kamaan Work)", 6.9, "9660033436", "Kamaan addition, heavy leaf spring tempering & bushes" + baseInfo, 0.032, -0.028),
-                NearbyService("Radhe Radiator & Cabin Welder Shop", 7.6, "9829055443", "Copper & aluminum radiator soldering, heavy welding, cabin denting" + baseInfo, -0.036, 0.031),
-                NearbyService("Golden Jubilee Truck Spares & Oils", 8.4, "01412555666", "Chassis lubricants, engine oils, air pressure pipelines" + baseInfo, 0.041, -0.035),
-                NearbyService("Bhawani Heavy Duty Differential Garage", 9.2, "9112233445", "Heavy truck differential repairs, hub greasing & crown wheel" + baseInfo, -0.045, 0.039),
-                NearbyService("Maruti Small Commercial Support Garage", 10.1, "9660033436", "Expert in Tata Ace, Mahindra Bolero Pickup, Dost repairs" + baseInfo, 0.050, -0.044),
-                NearbyService("Bajrang Commercial Gear Overhaul Shop", 11.0, "9876543210", "Gearbox bearing replacement, clutch finger adjusting" + baseInfo, -0.054, 0.048),
-                NearbyService("Hindustan 50-Ton Towing & Recovery Crane", 12.3, "9112233445", "Heavy hydraulic cranes for truck retrieval & highway towing" + baseInfo, 0.061, -0.055)
+                NearbyService("Shree Balaji Truck Service Center", 1.2, "9660033436", "Puncture repair, tire changing, wheel alignment & air check", 0.005, -0.003),
+                NearbyService("Krishna Multi-brand Commercial Hub", 2.1, "9112233445", "Authorized spares of Tata, Leyland & Eicher commercial trucks", -0.008, 0.005),
+                NearbyService("National Diesel Fuel Injector Point", 2.8, "9876543210", "FIP calibrators, nozzle settings & diesel leak experts", 0.012, -0.009),
+                NearbyService("Highway Mech Care & Breakdown Point", 0.4, "9660033436", "24/7 Breakdown mechanical support, suspension repairs", -0.015, 0.011),
+                NearbyService("Heavy Mech Point", 1.8, "9829055443", "Engine repair, clutch overhaul & gearbox setting", 0.018, -0.014),
+                NearbyService("Apex Authorized Commercial Service", 4.7, "9112233445", "Authorized Leyland mechanics, engine diagnostics", -0.022, 0.016),
+                NearbyService("Royal Truck Hub & Brake Service", 5.5, "9876543210", "Air brake setting, booster replacement & drum cutting", 0.025, -0.021),
+                NearbyService("Express Wheel Alignment Commercials", 0.9, "9112233445", "Laser computer alignment for 10-to-22 wheeler multi-axle trailers", -0.029, 0.024),
+                NearbyService("Leaf Spring Repair (Kamaan Work)", 6.9, "9660033436", "Kamaan addition, heavy leaf spring tempering & bushes", 0.032, -0.028),
+                NearbyService("Radhe Radiator & Cabin Welder Shop", 3.1, "9829055443", "Copper & aluminum radiator soldering, heavy welding, cabin denting", -0.036, 0.031),
+                NearbyService("Golden Jubilee Truck Spares & Oils", 8.4, "01412555666", "Chassis lubricants, engine oils, air pressure pipelines", 0.041, -0.035),
+                NearbyService("Bhawani Heavy Duty Differential Garage", 5.2, "9112233445", "Heavy truck differential repairs, hub greasing & crown wheel", -0.045, 0.039),
+                NearbyService("Small Commercial Support Garage", 1.5, "9660033436", "Expert in Tata Ace, Mahindra Bolero Pickup, Dost repairs", 0.050, -0.044),
+                NearbyService("Bajrang Commercial Gear Overhaul Shop", 7.0, "9876543210", "Gearbox bearing replacement, clutch finger adjusting", -0.054, 0.048),
+                NearbyService("Hindustan 50-Ton Towing & Recovery Crane", 6.3, "9112233445", "Heavy hydraulic cranes for truck retrieval & highway towing", 0.061, -0.055)
             )
             "pumps" -> listOf(
-                NearbyService("Indian Oil Highway Swagat Plaza", 0.8, "18002333555", "AdBlue dispenser, automated commercial vehicle wash yard, Swagat kitchen" + baseInfo, -0.002, 0.004),
-                NearbyService("Bharat Petroleum NH-48 COCO Plaza", 1.9, "02222713000", "High speed diesel dispensers, truck washing bay, large dormitory" + baseInfo, 0.008, -0.007),
-                NearbyService("HP Fuel Care & Truck Oasis", 2.6, "1800116030", "Digital payments, nitrogen air, engine coolant and backup power" + baseInfo, -0.012, 0.010),
-                NearbyService("Reliance Jio-bp Transit Station", 3.5, "9876543210", "Premium diesel, clean driver restrooms, driver canteen & charging points" + baseInfo, 0.016, -0.014),
-                NearbyService("Nayara Energy Safe Truck Stop", 4.3, "9660033436", "Emergency tyre inflator, 24/7 highway store, pure fuel certified" + baseInfo, -0.020, 0.018),
-                NearbyService("Shell V-Power Commercial Pump", 5.1, "9112233445", "Premium quality Shell fuels, driver cafe, FASTag recharge center" + baseInfo, 0.024, -0.021),
-                NearbyService("Jaipur Bypass HP Fuel Station", 6.0, "1800116030", "Large parking capacity for 50+ trucks, 24-hour service" + baseInfo, -0.028, 0.025),
-                NearbyService("HP CL-48 Highway Fuel Plaza", 6.8, "01412555666", "Advanced diesel filter quality check, overnight rest hub" + baseInfo, 0.032, -0.029),
-                NearbyService("BPCL Smart Line Highway Outlet", 7.5, "9829055443", "Dormitory bed, warm baths, automated token system for fuel" + baseInfo, -0.035, 0.032),
-                NearbyService("Essar Transit Truck Stop", 8.3, "9112233445", "Spacious parking lanes, free drinking water tank, lubricants store" + baseInfo, 0.039, -0.036),
-                NearbyService("IOCL Swagat Safe Parking Stop", 9.1, "18002333555", "Security guards, CCTV protected parking for cargos, drivers lounge" + baseInfo, -0.043, 0.039),
-                NearbyService("HP Auto Care Hub - Transport Nagar", 10.0, "9660033436", "FASTag help desk, oil filters, tire pressure monitors" + baseInfo, 0.047, -0.043),
-                NearbyService("BPCL Highway Hub near Toll Plaza", 10.9, "02222713000", "Emergency breakdown helper, toll info center, clean toilets" + baseInfo, -0.051, 0.047),
-                NearbyService("Indian Oil Commercial Fleet Center", 11.8, "18002333555", "Discounted fleet diesel cards accepted, rapid nozzle dispensers" + baseInfo, 0.055, -0.051),
-                NearbyService("HP Petrol Pump Bypass Corner", 12.7, "1800116030", "Mobile oil top-up, gear lubricants, windshield wipers store" + baseInfo, -0.059, 0.055)
+                NearbyService("Indian Oil Highway Swagat Plaza", 0.8, "18002333555", "AdBlue dispenser, automated commercial vehicle wash yard, Swagat kitchen", -0.002, 0.004),
+                NearbyService("Bharat Petroleum COCO Plaza", 1.9, "02222713000", "High speed diesel dispensers, truck washing bay, large dormitory", 0.008, -0.007),
+                NearbyService("HP Fuel Care & Truck Oasis", 2.6, "1800116030", "Digital payments, nitrogen air, engine coolant and backup power", -0.012, 0.010),
+                NearbyService("Reliance Jio-bp Transit Station", 0.5, "9876543210", "Premium diesel, clean driver restrooms, driver canteen & charging points", 0.016, -0.014),
+                NearbyService("Nayara Energy Safe Truck Stop", 4.3, "9660033436", "Emergency tyre inflator, 24/7 highway store, pure fuel certified", -0.020, 0.018),
+                NearbyService("Shell V-Power Commercial Pump", 5.1, "9112233445", "Premium quality Shell fuels, driver cafe, FASTag recharge center", 0.024, -0.021),
+                NearbyService("Bypass HP Fuel Station", 2.0, "1800116030", "Large parking capacity for 50+ trucks, 24-hour service", -0.028, 0.025),
+                NearbyService("HP CL-48 Highway Fuel Plaza", 6.8, "01412555666", "Advanced diesel filter quality check, overnight rest hub", 0.032, -0.029),
+                NearbyService("BPCL Smart Line Highway Outlet", 3.5, "9829055443", "Dormitory bed, warm baths, automated token system for fuel", -0.035, 0.032),
+                NearbyService("Essar Transit Truck Stop", 8.3, "9112233445", "Spacious parking lanes, free drinking water tank, lubricants store", 0.039, -0.036),
+                NearbyService("IOCL Swagat Safe Parking Stop", 9.1, "18002333555", "Security guards, CCTV protected parking for cargos, drivers lounge", -0.043, 0.039),
+                NearbyService("HP Auto Care Hub - Transport Nagar", 1.0, "9660033436", "FASTag help desk, oil filters, tire pressure monitors", 0.047, -0.043),
+                NearbyService("BPCL Highway Hub near Toll Plaza", 10.9, "02222713000", "Emergency breakdown helper, toll info center, clean toilets", -0.051, 0.047),
+                NearbyService("Indian Oil Commercial Fleet Center", 11.8, "18002333555", "Discounted fleet diesel cards accepted, rapid nozzle dispensers", 0.055, -0.051),
+                NearbyService("HP Petrol Pump Bypass Corner", 12.7, "1800116030", "Mobile oil top-up, gear lubricants, windshield wipers store", -0.059, 0.055)
             )
             "restaurants" -> listOf(
-                NearbyService("Dhaba Shri Balaji Veg Express", 1.5, "9414012345", "Traditional cot seating, Rajasthani Dal Baati, unlimited butter milk" + baseInfo, 0.006, 0.007),
-                NearbyService("Sardarji Da Famous Highway Dhaba", 2.4, "9829055443", "Spiced Amritsari Dal Makhani, hot tandoori rotis, overnight driver beds" + baseInfo, -0.010, -0.009),
-                NearbyService("Milestone Family Dhaba & Cafe", 3.2, "01412555666", "Air-conditioned dining section, hot tea stall, specialized driver meals" + baseInfo, 0.014, 0.013),
-                NearbyService("Royal Rajputana Desi Ghee Dhaba", 4.1, "9660033436", "Pure ghee Gatta Masala, Kadi khichdi, hot bajre ki roti" + baseInfo, -0.018, -0.016),
-                NearbyService("Punjab Express Highway Dhaba & Dorms", 5.0, "9112233445", "Special lassi, paneer bhurji, clay-oven tandoor, huge truck parking" + baseInfo, 0.022, 0.021),
-                NearbyService("Jaipur Bypass Highway Food Plaza", 5.9, "9876543210", "Clean washrooms, continuous mineral water supply, breakfast paranthas" + baseInfo, -0.026, -0.024),
-                NearbyService("Ganesh Pure Veg Fast Food Dhaba", 6.7, "9660033436", "Sev bhaji, paneer butter masala, quick dispatch for drivers" + baseInfo, 0.030, 0.029),
-                NearbyService("NH-48 highway Tea & Parantha Point", 7.6, "9829055443", "Stuffed Aloo-Pyaj Paranthas, special ginger cardamom tea 24/7" + baseInfo, -0.034, -0.032),
-                NearbyService("Sher-E-Punjab Food Point & Sleep Rooms", 8.4, "9112233445", "Sarson ka Saag, Makki di Roti, clean sleeping cots, separate bath area" + baseInfo, 0.038, 0.037),
-                NearbyService("Hotel Highway King Premium Dhaba", 9.3, "01412555666", "Multi-cuisine, premium western toilets, South Indian thalis" + baseInfo, -0.042, -0.040),
-                NearbyService("Apna Marwadi Chhaas & Rabdi Plaza", 10.1, "9660033436", "Chilled clay-pot butter milk, local sweet Rabdi, spicy sev-tomato" + baseInfo, 0.046, 0.045),
-                NearbyService("Guru Nanak Pure Veg Punjabi Food", 11.0, "9112233445", "Mix veg, yellow dal fry, butter tandoori roti, continuous service" + baseInfo, -0.050, -0.048),
-                NearbyService("Shiv Shakti Low Cost Driver Bhojnalaya", 11.8, "9876543210", "Highly economic and nutritious full meals for truck staff" + baseInfo, 0.054, 0.053),
-                NearbyService("Bharat Highway Family Dhaba & Garden", 12.6, "9112233445", "Spacious open-air lawn dining, spiced Shahi Paneer, naans" + baseInfo, -0.058, -0.056),
-                NearbyService("The Trucker's Welcome 24/7 Tea Corner", 13.5, "9660033436", "Strong highway tea, snacks, mobile recharge and maps help desk" + baseInfo, 0.062, 0.061)
+                NearbyService("Dhaba Shri Balaji Veg Express", 1.5, "9414012345", "Traditional cot seating, delicious local meals, unlimited butter milk", 0.006, 0.007),
+                NearbyService("Sardarji Da Famous Highway Dhaba", 2.4, "9829055443", "Spiced Amritsari Dal Makhani, hot tandoori rotis, overnight driver beds", -0.010, -0.009),
+                NearbyService("Milestone Family Dhaba & Cafe", 0.6, "01412555666", "Air-conditioned dining section, hot tea stall, specialized driver meals", 0.014, 0.013),
+                NearbyService("Royal Rajputana Desi Ghee Dhaba", 4.1, "9660033436", "Pure ghee Gatta Masala, Kadi khichdi, hot bajre ki roti", -0.018, -0.016),
+                NearbyService("Punjab Express Highway Dhaba & Dorms", 5.0, "9112233445", "Special lassi, paneer bhurji, clay-oven tandoor, huge truck parking", 0.022, 0.021),
+                NearbyService("Bypass Highway Food Plaza", 1.9, "9876543210", "Clean washrooms, continuous mineral water supply, breakfast paranthas", -0.026, -0.024),
+                NearbyService("Ganesh Pure Veg Fast Food Dhaba", 6.7, "9660033436", "Sev bhaji, paneer butter masala, quick dispatch for drivers", 0.030, 0.029),
+                NearbyService("NH-48 highway Tea & Parantha Point", 0.3, "9829055443", "Stuffed Aloo-Pyaj Paranthas, special ginger cardamom tea 24/7", -0.034, -0.032),
+                NearbyService("Sher-E-Punjab Food Point & Sleep Rooms", 8.4, "9112233445", "Sarson ka Saag, Makki di Roti, clean sleeping cots, separate bath area", 0.038, 0.037),
+                NearbyService("Hotel Highway King Premium Dhaba", 9.3, "01412555666", "Multi-cuisine, premium western toilets, South Indian thalis", -0.042, -0.040),
+                NearbyService("Apna Marwadi Chhaas & Rabdi Plaza", 3.1, "9660033436", "Chilled clay-pot butter milk, local sweet Rabdi, spicy sev-tomato", 0.046, 0.045),
+                NearbyService("Guru Nanak Pure Veg Punjabi Food", 11.0, "9112233445", "Mix veg, yellow dal fry, butter tandoori roti, continuous service", -0.050, -0.048),
+                NearbyService("Shiv Shakti Low Cost Driver Bhojnalaya", 0.7, "9876543210", "Highly economic and nutritious full meals for truck staff", 0.054, 0.053),
+                NearbyService("Bharat Highway Family Dhaba & Garden", 12.6, "9112233445", "Spacious open-air lawn dining, spiced Shahi Paneer, naans", -0.058, -0.056),
+                NearbyService("The Trucker's Welcome 24/7 Tea Corner", 13.5, "9660033436", "Strong highway tea, snacks, mobile recharge and maps help desk", 0.062, 0.061)
             )
             "commercial_repair" -> listOf(
-                NearbyService("Apex Heavy Truck Chassis Straightening", 1.8, "9876543210", "Specialized laser frame alignment, heavy duty welding, axle balancing" + baseInfo, 0.007, -0.006),
-                NearbyService("National Commercial Spares & Hydraulics", 2.6, "9112233445", "Original engine mounts, tipper hydraulic pump repairs, oil seals" + baseInfo, -0.011, 0.009),
-                NearbyService("Jai Shree Ram Heavy Engine overhaul", 3.5, "9660033436", "Complete commercial engine rebuilding, ring & liner replacement" + baseInfo, 0.015, -0.013),
-                NearbyService("Speed King Air Brake System Mechanics", 4.3, "9829055443", "Air brake valve setting, booster maintenance, leakage check" + baseInfo, -0.019, 0.016),
-                NearbyService("Jaipur Commercial Gearbox Repair Shop", 5.2, "9112233445", "Heavy truck transmission overhauls, clutch pressure plate replacement" + baseInfo, 0.023, -0.020),
-                NearbyService("Rajasthan Leaf Spring (Kamani) Fitting Point", 6.0, "9660033436", "Extra kamaan leaf insertion, heavy center bolt changing" + baseInfo, -0.027, 0.023),
-                NearbyService("Vishwakarma Tipper & Dumper Hydraulic Experts", 6.9, "9876543210", "Dumper hydraulic cylinder rebuilding, high pressure hose crimping" + baseInfo, 0.031, -0.027),
-                NearbyService("Highway Alternator & Starter Repair Point", 7.7, "9112233445", "Heavy commercial vehicle dynamic dynamo wiring, new batteries" + baseInfo, -0.035, 0.031),
-                NearbyService("NH-48 Radiator Core & Condenser Welders", 8.5, "9829055443", "Radiator copper soldering, cooling fan repair, high pressure wash" + baseInfo, 0.039, -0.035),
-                NearbyService("Tractor & Heavy Truck Power Steering Works", 9.4, "9660033436", "Steering box overhaul, power steering pump sealing, tie rod change" + baseInfo, -0.043, 0.039),
-                NearbyService("Pioneer Diesel FIP Calibration & Tuning Lab", 10.2, "01412555666", "Bosch fuel pump calibrators, injector cleaning, smoke control" + baseInfo, 0.047, -0.043),
-                NearbyService("Tirupati Commercial Body & Cabin Fabricators", 11.1, "9112233445", "Chassis modification, driver cabin welding, heavy metal side sheet" + baseInfo, -0.051, 0.047),
-                NearbyService("Royal Propeller Shaft & Cross-Bearing Center", 11.9, "9876543210", "Propeller shaft alignment, universal cross joint fitting" + baseInfo, 0.055, -0.051),
-                NearbyService("Hindustan Air Brake Pipeline Sealing Point", 12.8, "9112233445", "Metal and plastic air line piping, booster valve setting" + baseInfo, -0.059, 0.055),
-                NearbyService("Ambika Heavy Commercial Turbo Care", 13.6, "9660033436", "Turbocharger turbine overhauling, wastegate settings, intercooler" + baseInfo, 0.063, -0.059)
+                NearbyService("Heavy Truck Chassis Straightening", 1.8, "9876543210", "Specialized laser frame alignment, heavy duty welding, axle balancing", 0.007, -0.006),
+                NearbyService("National Commercial Spares & Hydraulics", 2.6, "9112233445", "Original engine mounts, tipper hydraulic pump repairs, oil seals", -0.011, 0.009),
+                NearbyService("Jai Shree Ram Heavy Engine overhaul", 0.5, "9660033436", "Complete commercial engine rebuilding, ring & liner replacement", 0.015, -0.013),
+                NearbyService("Speed King Air Brake System Mechanics", 4.3, "9829055443", "Air brake valve setting, booster maintenance, leakage check", -0.019, 0.016),
+                NearbyService("Commercial Gearbox Repair Shop", 5.2, "9112233445", "Heavy truck transmission overhauls, clutch pressure plate replacement", 0.023, -0.020),
+                NearbyService("Leaf Spring (Kamani) Fitting Point", 1.0, "9660033436", "Extra kamaan leaf insertion, heavy center bolt changing", -0.027, 0.023),
+                NearbyService("Vishwakarma Tipper & Dumper Hydraulic Experts", 6.9, "9876543210", "Dumper hydraulic cylinder rebuilding, high pressure hose crimping", 0.031, -0.027),
+                NearbyService("Highway Alternator & Starter Repair Point", 3.7, "9112233445", "Heavy commercial vehicle dynamic dynamo wiring, new batteries", -0.035, 0.031),
+                NearbyService("Radiator Core & Condenser Welders", 8.5, "9829055443", "Radiator copper soldering, cooling fan repair, high pressure wash", 0.039, -0.035),
+                NearbyService("Tractor & Heavy Truck Power Steering Works", 2.4, "9660033436", "Steering box overhaul, power steering pump sealing, tie rod change", -0.043, 0.039),
+                NearbyService("Pioneer Diesel FIP Calibration & Tuning Lab", 10.2, "01412555666", "Bosch fuel pump calibrators, injector cleaning, smoke control", 0.047, -0.043),
+                NearbyService("Tirupati Commercial Body & Cabin Fabricators", 11.1, "9112233445", "Chassis modification, driver cabin welding, heavy metal side sheet", -0.051, 0.047),
+                NearbyService("Royal Propeller Shaft & Cross-Bearing Center", 11.9, "9876543210", "Propeller shaft alignment, universal cross joint fitting", 0.055, -0.051),
+                NearbyService("Hindustan Air Brake Pipeline Sealing Point", 1.2, "9112233445", "Metal and plastic air line piping, booster valve setting", -0.059, 0.055),
+                NearbyService("Ambika Heavy Commercial Turbo Care", 13.6, "9660033436", "Turbocharger turbine overhauling, wastegate settings, intercooler", 0.063, -0.059)
             )
             "workshops" -> listOf(
-                NearbyService("Jaipur Auto Cabin & Body Workshop", 2.2, "9660033436", "Full cabin rebuilding, sheet welding, spray painting, structural repair" + baseInfo, 0.004, -0.005),
-                NearbyService("Royal Heavy Electrical & Rewinding Workshop", 3.0, "9112233445", "Dynamo rewinding, vehicle wiring harness repairs, heavy battery charging" + baseInfo, -0.008, 0.007),
-                NearbyService("Vijay Lathe & Crankshaft Surfacing Workshop", 3.9, "9876543210", "Engine head surfacing, cylinder boring, custom thread lathe cutting" + baseInfo, 0.012, -0.010),
-                NearbyService("Shree Radhe Gas & Arc Welding Workshop", 4.7, "9829055443", "Heavy metal chassis gas cutting, trailer dumper structural welding" + baseInfo, -0.016, 0.013),
-                NearbyService("Balaji Pneumatic Tools & Compressor Workshop", 5.6, "9660033436", "Air compressors, pneumatic gun repairs, fast tyre replacement" + baseInfo, 0.020, -0.017),
-                NearbyService("Sai Ram Fuel Pump Calibration Workshop", 6.4, "9112233445", "High-precision electronic common-rail CRDI system testing" + baseInfo, -0.024, 0.020),
-                NearbyService("Maruti Cabin Seat Cushion & Glass Workshop", 7.3, "9876543210", "Driver comfort seat modification, windshield glass sealing" + baseInfo, 0.028, -0.024),
-                NearbyService("National Highway Art & Spray Paint Workshop", 8.1, "9112233445", "Traditional Indian truck art decoration, warning letters, reflective tape" + baseInfo, -0.032, 0.027),
-                NearbyService("Supreme Tyre Retreading & Vulcanizing Hub", 9.0, "9660033436", "Cold tyre retreading, advanced radial tyre hot patch vulcanizing" + baseInfo, 0.036, -0.031),
-                NearbyService("Apex Hydraulic Pipe Crimping & Hose Workshop", 9.8, "9829055443", "Heavy hydraulic hose pipe making, high-pressure coupling" + baseInfo, -0.040, 0.034),
-                NearbyService("Jai Durga Spring Steel Heat Treatment Point", 10.7, "01412555666", "Leaf spring re-tempering, hardening, heavy industrial metal smithy" + baseInfo, 0.044, -0.038),
-                NearbyService("Bhawani Clutch Leather Riveting & Drum Workshop", 11.5, "9112233445", "Brake drum turning, clutch leather facing, heavy riveters" + baseInfo, -0.048, 0.041),
-                NearbyService("Bharat Radiator Core & Copper Welding Point", 12.4, "9876543210", "Radiator high pressure washing, block checking, core replacement" + baseInfo, 0.052, -0.045),
-                NearbyService("Durga Trailer Trailer Chassis Fabricators", 13.2, "9112233445", "Custom commercial trailer design, heavy-duty axle mounting" + baseInfo, -0.056, 0.048),
-                NearbyService("Everest Auto Dynamo carbon brush Workshop", 14.1, "9660033436", "Self starter carbon replacement, heavy truck fuse boxes wiring" + baseInfo, 0.060, -0.052)
+                NearbyService("Auto Cabin & Body Workshop", 2.2, "9660033436", "Full cabin rebuilding, sheet welding, spray painting, structural repair", 0.004, -0.005),
+                NearbyService("Royal Heavy Electrical & Rewinding Workshop", 3.0, "9112233445", "Dynamo rewinding, vehicle wiring harness repairs, heavy battery charging", -0.008, 0.007),
+                NearbyService("Vijay Lathe & Crankshaft Surfacing Workshop", 1.9, "9876543210", "Engine head surfacing, cylinder boring, custom thread lathe cutting", 0.012, -0.010),
+                NearbyService("Shree Radhe Gas & Arc Welding Workshop", 4.7, "9829055443", "Heavy metal chassis gas cutting, trailer dumper structural welding", -0.016, 0.013),
+                NearbyService("Balaji Pneumatic Tools & Compressor Workshop", 0.6, "9660033436", "Air compressors, pneumatic gun repairs, fast tyre replacement", 0.020, -0.017),
+                NearbyService("Sai Ram Fuel Pump Calibration Workshop", 6.4, "9112233445", "High-precision electronic common-rail CRDI system testing", -0.024, 0.020),
+                NearbyService("Cabin Seat Cushion & Glass Workshop", 2.3, "9876543210", "Driver comfort seat modification, windshield glass sealing", 0.028, -0.024),
+                NearbyService("National Highway Art & Spray Paint Workshop", 8.1, "9112233445", "Traditional Indian truck art decoration, warning letters, reflective tape", -0.032, 0.027),
+                NearbyService("Supreme Tyre Retreading & Vulcanizing Hub", 3.0, "9660033436", "Cold tyre retreading, advanced radial tyre hot patch vulcanizing", 0.036, -0.031),
+                NearbyService("Hydraulic Pipe Crimping & Hose Workshop", 9.8, "9829055443", "Heavy hydraulic hose pipe making, high-pressure coupling", -0.040, 0.034),
+                NearbyService("Jai Durga Spring Steel Heat Treatment Point", 10.7, "01412555666", "Leaf spring re-tempering, hardening, heavy industrial metal smithy", 0.044, -0.038),
+                NearbyService("Bhawani Clutch Leather Riveting & Drum Workshop", 1.5, "9112233445", "Brake drum turning, clutch leather facing, heavy riveters", -0.048, 0.041),
+                NearbyService("Bharat Radiator Core & Copper Welding Point", 12.4, "9876543210", "Radiator high pressure washing, block checking, core replacement", 0.052, -0.045),
+                NearbyService("Durga Trailer Trailer Chassis Fabricators", 13.2, "9112233445", "Custom commercial trailer design, heavy-duty axle mounting", -0.056, 0.048),
+                NearbyService("Everest Auto Dynamo carbon brush Workshop", 4.1, "9660033436", "Self starter carbon replacement, heavy truck fuse boxes wiring", 0.060, -0.052)
             )
             "hospitals" -> listOf(
-                NearbyService("Highway Emergency Trauma Care Centre", 3.2, "108", "24/7 Intensive care unit, fracture surgeons, cardiac ambulance service" + baseInfo, -0.010, 0.005),
-                NearbyService("City Lifeline Multi-specialty Hospital", 4.1, "01412334455", "Emergency ward, operation theater, advanced diagnostics, blood bank" + baseInfo, 0.015, -0.009),
-                NearbyService("NH-48 Community Health & Dressing Center", 4.9, "108", "Primary treatment, saline drips, minor stitching, dehydration help" + baseInfo, -0.019, 0.012),
-                NearbyService("Apex Trauma & Orthopedic Fracture Hospital", 5.8, "9876543210", "Specialized bone setters, pain relief injections, x-ray unit" + baseInfo, 0.023, -0.015),
-                NearbyService("Jaipur Bypass General Clinic & Oxygen Center", 6.6, "9112233445", "24-hour on-call doctors, critical oxygen cylinder support" + baseInfo, -0.027, 0.018),
-                NearbyService("National Highway Red Cross First-Aid Clinic", 7.5, "108", "Immediate dressings, antiseptic washing, primary painkillers" + baseInfo, 0.031, -0.021),
-                NearbyService("Life Guard Ambulance & Support near Toll Plaza", 8.3, "108", "Rapid transit ambulance service, emergency paramedical staff" + baseInfo, -0.035, 0.024),
-                NearbyService("Shree Ram General Hospital Emergency Wing", 9.2, "01412555666", "Critical care physicians, emergency medical supply, diagnostic lab" + baseInfo, 0.039, -0.027),
-                NearbyService("Hindustan First-Aid Care Station", 10.0, "108", "Primary wound care, rehydration saline center, ambulance dispatch" + baseInfo, -0.043, 0.030),
-                NearbyService("Fortis Escorts Emergency Cardiac Ward", 10.9, "01412555666", "Tertiary level medical care, ventilator and advanced life support" + baseInfo, 0.047, -0.033),
-                NearbyService("Sanjeevani Specialty Burn & Injury Clinic", 11.7, "9829055443", "Emergency burn dressing, deep cleanups, continuous care" + baseInfo, -0.051, 0.036),
-                NearbyService("Jaipur Golden Trauma & Medical Center", 12.6, "9112233445", "Emergency operations, 24/7 medical store, continuous ICU" + baseInfo, 0.055, -0.039),
-                NearbyService("Arogya Medical Clinic & Highway Pharmacy", 13.4, "9660033436", "First aid kits, blood pressure/sugar testing, OTC pain killers" + baseInfo, -0.059, 0.042),
-                NearbyService("Metro Mass Emergency Super-Specialty Unit", 14.3, "01412334455", "Full scale intensive care beds, immediate fracture surgeons" + baseInfo, 0.063, -0.045),
-                NearbyService("Highway Care First-Responder Emergency Post", 15.2, "108", "Free emergency medicines, first-aid box, instant helper dispatch" + baseInfo, -0.067, 0.048)
+                NearbyService("Highway Emergency Trauma Care Centre", 3.2, "108", "24/7 Intensive care unit, fracture surgeons, cardiac ambulance service", -0.010, 0.005),
+                NearbyService("City Lifeline Multi-specialty Hospital", 1.1, "01412334455", "Emergency ward, operation theater, advanced diagnostics, blood bank", 0.015, -0.009),
+                NearbyService("NH-48 Community Health & Dressing Center", 4.9, "108", "Primary treatment, saline drips, minor stitching, dehydration help", -0.019, 0.012),
+                NearbyService("Apex Trauma & Orthopedic Fracture Hospital", 0.8, "9876543210", "Specialized bone setters, pain relief injections, x-ray unit", 0.023, -0.015),
+                NearbyService("Bypass General Clinic & Oxygen Center", 2.6, "9112233445", "24-hour on-call doctors, critical oxygen cylinder support", -0.027, 0.018),
+                NearbyService("National Highway Red Cross First-Aid Clinic", 7.5, "108", "Immediate dressings, antiseptic washing, primary painkillers", 0.031, -0.021),
+                NearbyService("Life Guard Ambulance & Support near Toll Plaza", 8.3, "108", "Rapid transit ambulance service, emergency paramedical staff", -0.035, 0.024),
+                NearbyService("Shree Ram General Hospital Emergency Wing", 4.2, "01412555666", "Critical care physicians, emergency medical supply, diagnostic lab", 0.039, -0.027),
+                NearbyService("First-Aid Care Station", 10.0, "108", "Primary wound care, rehydration saline center, ambulance dispatch", -0.043, 0.030),
+                NearbyService("Escorts Emergency Cardiac Ward", 10.9, "01412555666", "Tertiary level medical care, ventilator and advanced life support", 0.047, -0.033),
+                NearbyService("Sanjeevani Specialty Burn & Injury Clinic", 3.7, "9829055443", "Emergency burn dressing, deep cleanups, continuous care", -0.051, 0.036),
+                NearbyService("Golden Trauma & Medical Center", 12.6, "9112233445", "Emergency operations, 24/7 medical store, continuous ICU", 0.055, -0.039),
+                NearbyService("Arogya Medical Clinic & Highway Pharmacy", 5.4, "9660033436", "First aid kits, blood pressure/sugar testing, OTC pain killers", -0.059, 0.042),
+                NearbyService("Metro Mass Emergency Super-Specialty Unit", 14.3, "01412334455", "Full scale intensive care beds, immediate fracture surgeons", 0.063, -0.045),
+                NearbyService("Highway Care First-Responder Emergency Post", 0.2, "108", "Free emergency medicines, first-aid box, instant helper dispatch", -0.067, 0.048)
             )
             else -> emptyList()
         }
+
+        return rawServices.map { service ->
+            var name = service.name
+            if (name.contains("Jaipur", ignoreCase = true)) {
+                name = name.replace("Jaipur", displayCity, ignoreCase = true)
+            } else if (name.contains("Rajasthani", ignoreCase = true)) {
+                name = name.replace("Rajasthani", if (displayState == "Rajasthan") "Rajasthani" else "$displayCity-style", ignoreCase = true)
+            } else if (name.contains("Rajasthan", ignoreCase = true)) {
+                name = name.replace("Rajasthan", displayState, ignoreCase = true)
+            } else {
+                if (!name.contains(displayCity, ignoreCase = true) && name.length < 35) {
+                    name = "$displayCity $name"
+                }
+            }
+
+            val modifiedDescription = service.description + baseInfo
+            service.copy(
+                name = name,
+                description = modifiedDescription
+            )
+        }.sortedBy { it.distanceKm }
     }
 }
 

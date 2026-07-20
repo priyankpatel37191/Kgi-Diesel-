@@ -1879,6 +1879,14 @@ fun DriverServicesTab(viewModel: MainViewModel, lang: String) {
     var areaQuery by remember { mutableStateOf("NH-48 Bypass") }
     var pincodeQuery by remember { mutableStateOf("") }
 
+    var stateSearch by remember { mutableStateOf("Rajasthan") }
+    var citySearch by remember { mutableStateOf("Jaipur") }
+    var areaSearch by remember { mutableStateOf("NH-48 Bypass") }
+    var pincodeSearch by remember { mutableStateOf("") }
+
+    var isSearching by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Text(
             text = "National Assistance & Radar Locator",
@@ -2029,6 +2037,38 @@ fun DriverServicesTab(viewModel: MainViewModel, lang: String) {
                             shape = RoundedCornerShape(10.dp)
                         )
                     }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Button(
+                        onClick = {
+                            scope.launch {
+                                isSearching = true
+                                kotlinx.coroutines.delay(1000)
+                                stateSearch = stateQuery
+                                citySearch = cityQuery
+                                areaSearch = areaQuery
+                                pincodeSearch = pincodeQuery
+                                isSearching = false
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.Black),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                            .testTag("search_services_btn"),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        if (isSearching) {
+                            CircularProgressIndicator(color = Color.White, modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text("SCANNING SATELLITE RADAR...", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        } else {
+                            Icon(Icons.Default.Search, contentDescription = null, tint = Color.White)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("SEARCH ASSISTANCE OUTPOSTS", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        }
+                    }
                 }
             }
 
@@ -2064,10 +2104,10 @@ fun DriverServicesTab(viewModel: MainViewModel, lang: String) {
             // Query results
             val services = viewModel.getNearbyServices(
                 categoryId = selectedCategory,
-                city = cityQuery,
-                pincode = pincodeQuery,
-                state = stateQuery,
-                area = areaQuery
+                city = citySearch,
+                pincode = pincodeSearch,
+                state = stateSearch,
+                area = areaSearch
             )
 
             Text(
@@ -2141,6 +2181,45 @@ fun DriverServicesTab(viewModel: MainViewModel, lang: String) {
                                         fontSize = 12.sp
                                     )
                                 }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                OutlinedButton(
+                                     onClick = {
+                                         val query = Uri.encode("${service.name}, ${service.description}")
+                                         val mapUri = Uri.parse("geo:0,0?q=$query")
+                                         val mapIntent = Intent(Intent.ACTION_VIEW, mapUri)
+                                         mapIntent.setPackage("com.google.android.apps.maps")
+                                         try {
+                                             context.startActivity(mapIntent)
+                                         } catch (e: Exception) {
+                                             val webUri = Uri.parse("https://www.google.com/maps/search/?api=1&query=$query")
+                                             val webIntent = Intent(Intent.ACTION_VIEW, webUri)
+                                             context.startActivity(webIntent)
+                                         }
+                                     },
+                                     modifier = Modifier
+                                         .testTag("navigate_maps_${index}")
+                                         .height(30.dp),
+                                     colors = ButtonDefaults.outlinedButtonColors(
+                                         contentColor = Color(0xFF0F172A)
+                                     ),
+                                     border = BorderStroke(1.dp, Color(0xFFCBD5E1)),
+                                     shape = RoundedCornerShape(6.dp),
+                                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                                 ) {
+                                     Icon(
+                                         imageVector = Icons.Default.LocationOn,
+                                         contentDescription = null,
+                                         modifier = Modifier.size(12.dp),
+                                         tint = Color(0xFF0F172A)
+                                     )
+                                     Spacer(modifier = Modifier.width(4.dp))
+                                     Text(
+                                         text = "NAVIGATE TO GOOGLE MAPS",
+                                         fontSize = 9.sp,
+                                         fontWeight = FontWeight.Bold,
+                                         letterSpacing = 0.5.sp
+                                     )
+                                 }
                             }
                             IconButton(
                                 onClick = {
@@ -2323,8 +2402,9 @@ fun DriverTripsTab(viewModel: MainViewModel, allLoads: List<Load>, lang: String)
                                     }
                                 } else {
                                     Column {
+                                        val tripNoLabel = "Free Trip ${completedTripsCount + 1} of 2"
                                         Text("Shipper: ${load.shipperName}", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-                                        Text("Phone: ${load.shipperPhone}", fontSize = 12.sp)
+                                        Text("Phone: ${load.shipperPhone} ($tripNoLabel)", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = Color(0xFF0369A1))
                                     }
                                     IconButton(
                                         onClick = {
@@ -3329,8 +3409,9 @@ fun ShipperTripsTab(
                                     }
                                 } else {
                                     Column {
+                                        val tripNoLabel = "Free Trip ${completedTripsCount + 1} of 2"
                                         Text("Driver: ${load.assignedDriverName}", fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                                        Text("Phone: ${load.assignedDriverPhone}", fontSize = 12.sp)
+                                        Text("Phone: ${load.assignedDriverPhone} ($tripNoLabel)", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = Color(0xFF15803D))
                                     }
                                     IconButton(
                                         onClick = {
